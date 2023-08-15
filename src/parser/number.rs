@@ -5,14 +5,19 @@ use tailcall::tailcall;
 /// ```bnf
 /// <nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 /// ```
-pub fn nonzero<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
-    match s.get(i) {
-        Some(b'1'..=b'9') => {
-            let i = i + 1;
+pub fn nonzero<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+    if let Some(b'1'..=b'9') = source.get(index) {
+        let index = index + 1;
 
-            Ok((&s[..i], i))
-        }
-        _ => Err(Error::new(i)),
+        let parsed = &source[..index];
+
+        let result = (parsed, index);
+
+        Ok(result)
+    } else {
+        let result = Error::new(index);
+
+        Err(result)
     }
 }
 
@@ -37,14 +42,19 @@ mod test_nonzero {
 /// ```bnf
 /// <zero> ::= "0"
 /// ```
-pub fn zero<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
-    match s.get(i) {
-        Some(b'0') => {
-            let i = i + 1;
+pub fn zero<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+    if let Some(b'0') = source.get(index) {
+        let index = index + 1;
 
-            Ok((&s[..i], i))
-        }
-        _ => Err(Error::new(i)),
+        let parsed = &source[..index];
+
+        let result = (parsed, index);
+
+        Ok(result)
+    } else {
+        let result = Error::new(index);
+
+        Err(result)
     }
 }
 
@@ -69,8 +79,12 @@ mod test_zero {
 /// ```bnf
 /// <digit> ::= <zero> | <nonzero>
 /// ```
-pub fn digit<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
-    zero(s, i).or(nonzero(s, i)).or_else(|_| Err(Error::new(i)))
+pub fn digit<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+    zero(source, index).or(nonzero(source, index)).or_else(|_| {
+        let result = Error::new(index);
+
+        Err(result)
+    })
 }
 
 #[cfg(test)]
@@ -98,25 +112,25 @@ mod test_digit {
 /// <digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
 /// ```
 #[tailcall]
-pub fn digits<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
-    match digit(s, i) {
-        Ok((_, i)) => match digit(s, i) {
-            Ok(_) => digits(s, i),
+pub fn digits<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+    match digit(source, index) {
+        Ok((_, index)) => match digit(source, index) {
+            Ok(_) => digits(source, index),
             Err(_) => {
-                if let Some(&b) = s.get(i) {
-                    if b == b'_' {
-                        let i = i + 1;
+                if let Some(b'_') = source.get(index) {
+                    let index = index + 1;
 
-                        digits(s, i)
-                    } else {
-                        Ok((&s[..i], i))
-                    }
+                    digits(source, index)
                 } else {
-                    Ok((&s[..i], i))
+                    let parsed = &source[..index];
+
+                    let result = (parsed, index);
+
+                    Ok(result)
                 }
             }
         },
-        Err(e) => Err(e),
+        Err(result) => Err(result),
     }
 }
 
@@ -149,25 +163,24 @@ mod test_digits {
 /// ```bnf
 /// <natural> ::= <nonzero> <digits1> | <nonzero> "_" <digits1> | <digit>
 /// ```
-pub fn natural<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
-    match nonzero(s, i) {
-        Ok((_, i)) => match digit(s, i) {
-            Ok(_) => digits(s, i),
+pub fn natural<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+    match nonzero(source, index) {
+        Ok((_, index)) => match digit(source, index) {
+            Ok(_) => digits(source, index),
             Err(_) => {
-                if let Some(&b) = s.get(i) {
-                    if b == b'_' {
-                        let i = i + 1;
+                if let Some(b'_') = source.get(index) {
+                    let index = index + 1;
 
-                        digits(s, i)
-                    } else {
-                        Ok((&s[..i], i))
-                    }
+                    digits(source, index)
                 } else {
-                    Ok((&s[..i], i))
+                    let parsed = &source[..index];
+                    let result = (parsed, index);
+
+                    Ok(result)
                 }
             }
         },
-        Err(_) => digit(s, i),
+        Err(_) => digit(source, index),
     }
 }
 
@@ -200,16 +213,20 @@ mod test_natural {
 /// ```bnf
 /// <integer> ::= "+" <natural> | "-" <natural> | <natural>
 /// ```
-pub fn integer<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
-    if let Some(&b) = s.get(i) {
-        if b == b'-' || b == b'+' {
-            let i = i + 1;
-            natural(s, i)
-        } else {
-            natural(s, i)
+pub fn integer<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+    match source.get(index) {
+        Some(b'+') | Some(b'-') => {
+            let index = index + 1;
+            natural(source, index)
         }
-    } else {
-        Err(Error::new(i))
+
+        Some(_) => natural(source, index),
+
+        None => {
+            let result = Error::new(index);
+
+            Err(result)
+        }
     }
 }
 
@@ -246,21 +263,20 @@ mod test_integer {
 /// ```bnf
 /// <float> ::= <integer> "." <digits1>
 /// ```
-pub fn float<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
-    match integer(s, i) {
-        Ok((_, i)) => {
-            if let Some(&b) = s.get(i) {
-                if b == b'.' {
-                    let i = i + 1;
-                    digits(s, i)
-                } else {
-                    Err(Error::new(i))
-                }
+pub fn float<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+    match integer(source, index) {
+        Ok((_, index)) => {
+            if let Some(b'.') = source.get(index) {
+                let index = index + 1;
+
+                digits(source, index)
             } else {
-                Err(Error::new(i))
+                let result = Error::new(index);
+
+                Err(result)
             }
         }
-        Err(e) => Err(e),
+        Err(result) => Err(result),
     }
 }
 
@@ -305,10 +321,14 @@ mod test_float {
 /// ```bnf
 /// <number> ::= <float> | <integer>
 /// ```
-pub fn number<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
-    float(s, i)
-        .or(integer(s, i))
-        .or_else(|_| Err(Error::new(i)))
+pub fn number<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+    float(source, index)
+        .or(integer(source, index))
+        .or_else(|_| {
+            let result = Error::new(index);
+
+            Err(result)
+        })
 }
 
 // add tests for number
