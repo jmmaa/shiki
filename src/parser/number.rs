@@ -10,10 +10,7 @@ pub fn nonzero<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
         Some(b'1'..=b'9') => {
             let i = i + 1;
 
-            match s.get(..i) {
-                Some(v) => Ok((v, i)),
-                None => Err(Error::new(i)),
-            }
+            Ok((&s[..i], i))
         }
         _ => Err(Error::new(i)),
     }
@@ -45,10 +42,7 @@ pub fn zero<'a>(s: SourceRef<'a>, i: Index) -> Result<(&'a [u8], Index)> {
         Some(b'0') => {
             let i = i + 1;
 
-            match s.get(..i) {
-                Some(v) => Ok((v, i)),
-                None => Err(Error::new(i)),
-            }
+            Ok((&s[..i], i))
         }
         _ => Err(Error::new(i)),
     }
