@@ -1,16 +1,17 @@
 use crate::prelude::*;
+
 use tailcall::tailcall;
+
+use crate::parser::traits::Source;
 
 /// This parser is represented with the bnf grammar below
 /// ```bnf
 /// <nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 /// ```
-pub fn nonzero<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+pub fn nonzero(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
     if let Some(b'1'..=b'9') = source.get(index) {
         let index = index + 1;
-
-        let parsed = &source[..index];
-
+        let parsed = source.slice(..index);
         let result = (parsed, index);
 
         Ok(result)
@@ -42,12 +43,10 @@ mod test_nonzero {
 /// ```bnf
 /// <zero> ::= "0"
 /// ```
-pub fn zero<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+pub fn zero(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
     if let Some(b'0') = source.get(index) {
         let index = index + 1;
-
-        let parsed = &source[..index];
-
+        let parsed = source.slice(..index);
         let result = (parsed, index);
 
         Ok(result)
@@ -79,12 +78,10 @@ mod test_zero {
 /// ```bnf
 /// <digit> ::= <zero> | <nonzero>
 /// ```
-pub fn digit<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
-    zero(source, index).or(nonzero(source, index)).or_else(|_| {
-        let result = Error::new(index);
-
-        Err(result)
-    })
+pub fn digit(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
+    zero(source, index)
+        .or(nonzero(source, index))
+        .map_err(|_| Error::new(index))
 }
 
 #[cfg(test)]
@@ -107,29 +104,34 @@ mod test_digit {
         assert_eq!(digit(b"bqwe123", 0), Err(Error::new(0)));
     }
 }
+
 /// This parser is represented with the bnf grammar below
 /// ```bnf
 /// <digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
 /// ```
 #[tailcall]
-pub fn digits<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+pub fn digits(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
     match digit(source, index) {
-        Ok((_, index)) => match digit(source, index) {
-            Ok(_) => digits(source, index),
-            Err(_) => {
-                if let Some(b'_') = source.get(index) {
-                    let index = index + 1;
+        Ok(parsed) => {
+            let (_, index) = parsed;
 
-                    digits(source, index)
-                } else {
-                    let parsed = &source[..index];
+            match digit(source, index) {
+                Ok(_) => digits(source, index),
 
-                    let result = (parsed, index);
+                Err(_) => {
+                    if let Some(b'_') = source.get(index) {
+                        let index = index + 1;
 
-                    Ok(result)
+                        digits(source, index)
+                    } else {
+                        let parsed = source.slice(..index);
+                        let result = (parsed, index);
+
+                        Ok(result)
+                    }
                 }
             }
-        },
+        }
         Err(result) => Err(result),
     }
 }
@@ -163,23 +165,28 @@ mod test_digits {
 /// ```bnf
 /// <natural> ::= <nonzero> <digits1> | <nonzero> "_" <digits1> | <digit>
 /// ```
-pub fn natural<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+pub fn natural(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
     match nonzero(source, index) {
-        Ok((_, index)) => match digit(source, index) {
-            Ok(_) => digits(source, index),
-            Err(_) => {
-                if let Some(b'_') = source.get(index) {
-                    let index = index + 1;
+        Ok(parsed) => {
+            let (_, index) = parsed;
 
-                    digits(source, index)
-                } else {
-                    let parsed = &source[..index];
-                    let result = (parsed, index);
+            match digit(source, index) {
+                Ok(_) => digits(source, index),
 
-                    Ok(result)
+                Err(_) => {
+                    if let Some(b'_') = source.get(index) {
+                        let index = index + 1;
+
+                        digits(source, index)
+                    } else {
+                        let parsed = source.slice(..index);
+                        let result = (parsed, index);
+
+                        Ok(result)
+                    }
                 }
             }
-        },
+        }
         Err(_) => digit(source, index),
     }
 }
@@ -213,20 +220,17 @@ mod test_natural {
 /// ```bnf
 /// <integer> ::= "+" <natural> | "-" <natural> | <natural>
 /// ```
-pub fn integer<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
-    match source.get(index) {
-        Some(b'+') | Some(b'-') => {
+pub fn integer(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
+    if let Some(&b) = source.get(index) {
+        if b == b'+' || b == b'-' {
             let index = index + 1;
             natural(source, index)
+        } else {
+            natural(source, index)
         }
-
-        Some(_) => natural(source, index),
-
-        None => {
-            let result = Error::new(index);
-
-            Err(result)
-        }
+    } else {
+        let result = Error::new(index);
+        Err(result)
     }
 }
 
@@ -263,9 +267,11 @@ mod test_integer {
 /// ```bnf
 /// <float> ::= <integer> "." <digits1>
 /// ```
-pub fn float<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+pub fn float(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
     match integer(source, index) {
-        Ok((_, index)) => {
+        Ok(parsed) => {
+            let (_, index) = parsed;
+
             if let Some(b'.') = source.get(index) {
                 let index = index + 1;
 
@@ -321,14 +327,8 @@ mod test_float {
 /// ```bnf
 /// <number> ::= <float> | <integer>
 /// ```
-pub fn number<'a>(source: &'a [u8], index: usize) -> Result<Parsed<&'a [u8]>> {
+pub fn number(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
     float(source, index)
         .or(integer(source, index))
-        .or_else(|_| {
-            let result = Error::new(index);
-
-            Err(result)
-        })
+        .map_err(|_| Error::new(index))
 }
-
-// add tests for number
