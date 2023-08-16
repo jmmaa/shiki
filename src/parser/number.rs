@@ -30,11 +30,8 @@ mod test_nonzero {
     #[test]
     fn test_nonzero_parser() {
         assert!(nonzero(b"0", 0).is_err());
-
         assert!(nonzero(b"1", 0).is_ok());
-
         assert_eq!(nonzero(b"0", 0), Err(Error::new(0)));
-
         assert_eq!(nonzero(b"123", 0), Ok((b"1" as &[u8], 1)));
     }
 }
@@ -65,11 +62,8 @@ mod test_zero {
     #[test]
     fn test_zero_parser() {
         assert!(zero(b"0", 0).is_ok());
-
         assert!(zero(b"1", 0).is_err());
-
         assert_eq!(zero(b"0", 0), Ok((b"0" as &[u8], 1)));
-
         assert_eq!(zero(b"123", 0), Err(Error::new(0)));
     }
 }
@@ -92,15 +86,10 @@ mod test_digit {
     #[test]
     fn test_digit_parser() {
         assert!(digit(b"0", 0).is_ok());
-
         assert!(digit(b"1", 0).is_ok());
-
         assert!(digit(b"a", 0).is_err());
-
         assert_eq!(digit(b"0", 0), Ok((b"0" as &[u8], 1)));
-
         assert_eq!(digit(b"123", 0), Ok((b"1" as &[u8], 1)));
-
         assert_eq!(digit(b"bqwe123", 0), Err(Error::new(0)));
     }
 }
@@ -117,7 +106,6 @@ pub fn digits(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
 
             match digit(source, index) {
                 Ok(_) => digits(source, index),
-
                 Err(_) => {
                     if let Some(b'_') = source.get(index) {
                         let index = index + 1;
@@ -144,19 +132,12 @@ mod test_digits {
     #[test]
     fn test_digits_parser() {
         assert!(digits(b"0", 0).is_ok());
-
         assert!(digits(b"1", 0).is_ok());
-
         assert!(digits(b"0123", 0).is_ok());
-
         assert!(digits(b"a", 0).is_err());
-
         assert!(digits(b"", 0).is_err());
-
         assert_eq!(digits(b"0", 0), Ok((b"0" as &[u8], 1)));
-
         assert_eq!(digits(b"0123", 0), Ok((b"0123" as &[u8], 4)));
-
         assert_eq!(digits(b"bqwe123", 0), Err(Error::new(0)));
     }
 }
@@ -172,7 +153,6 @@ pub fn natural(source: &'_ [u8], index: usize) -> Result<Parsed<&'_ [u8]>> {
 
             match digit(source, index) {
                 Ok(_) => digits(source, index),
-
                 Err(_) => {
                     if let Some(b'_') = source.get(index) {
                         let index = index + 1;
@@ -242,23 +222,14 @@ mod test_integer {
     #[test]
     fn test_integer_parser() {
         assert!(integer(b"0", 0).is_ok());
-
         assert!(integer(b"1", 0).is_ok());
-
         assert!(integer(b"-1", 0).is_ok());
-
         assert!(integer(b"+1", 0).is_ok());
-
         assert!(integer(b"0123", 0).is_ok());
-
         assert!(integer(b"a", 0).is_err());
-
         assert!(integer(b"", 0).is_err());
-
         assert_eq!(integer(b"0", 0), Ok((b"0" as &[u8], 1)));
-
         assert_eq!(integer(b"-0123", 0), Ok((b"-0" as &[u8], 2)));
-
         assert_eq!(integer(b"bqwe123", 0), Err(Error::new(0)));
     }
 }
@@ -294,31 +265,18 @@ mod test_float {
     #[test]
     fn test_float_parser() {
         assert!(float(b"0", 0).is_err());
-
         assert!(float(b"1", 0).is_err());
-
         assert!(float(b"-1", 0).is_err());
-
         assert!(float(b"0.1", 0).is_ok());
-
         assert!(float(b"1.0", 0).is_ok());
-
         assert!(float(b"-1.", 0).is_err());
-
         assert!(float(b"+1", 0).is_err());
-
         assert!(float(b"0123", 0).is_err());
-
         assert!(float(b"a", 0).is_err());
-
         assert!(float(b"", 0).is_err());
-
         assert_eq!(float(b"0.1", 0), Ok((b"0.1" as &[u8], 3)));
-
         assert_eq!(float(b"-0123", 0), Err(Error::new(2)));
-
         assert_eq!(float(b"-123.1", 0), Ok((b"-123.1" as &[u8], 6)));
-
         assert_eq!(float(b"bqwe123", 0), Err(Error::new(0)));
     }
 }
