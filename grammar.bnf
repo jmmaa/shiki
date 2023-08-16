@@ -1,10 +1,10 @@
 <number> ::= <float> | <integer> 
 
-<float> ::= <integer> "." <digits1>
+<float> ::= <integer> "." <digits>
 
 <integer> ::= "+" <natural> | "-" <natural> | <natural>
 
-<natural> ::= <nonzero> <digits1> | <nonzero> "_" <digits1> | <digit>
+<natural> ::= <nonzero> <digits> | <nonzero> "_" <digits> | <digit>
 
 <digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
 
