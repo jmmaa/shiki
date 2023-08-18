@@ -1,3 +1,5 @@
+; NUMBER
+
 <number> ::= <float> | <integer> 
 
 <float> ::= <integer> "." <digits>
@@ -13,3 +15,31 @@
 <zero> ::= "0" 
 
 <nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+
+; IDENTIFIER
+
+
+<identifier> ::= <letter> | <letter> <alphanumeric_characters>
+
+<alphanumeric_characters> ::= <alphanumeric> | <alphanumeric> <alphanumeric_characters>
+
+<alphanumeric> ::= <digit> | <letter>
+
+<letter> ::= <lowercase_letter> | <uppercase_letter>
+
+<digit> ::= <zero> | <nonzero> 
+
+<zero> ::= "0" 
+
+<nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+<lowercase_letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" 
+		             | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" 
+
+<uppercase_letter> ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" 
+                     | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+
+
+; STRING
+; TODO
