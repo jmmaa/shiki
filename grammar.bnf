@@ -1,7 +1,8 @@
 ; NUMBER
-
+### nodes ###
 <number> ::= <float> | <integer> 
 
+### primitives ###
 <float> ::= <integer> "." <digits>
 
 <integer> ::= "+" <natural> | "-" <natural> | <natural>
@@ -19,10 +20,13 @@
 
 ; IDENTIFIER
 
+### nodes ###
+<nested_identifier> ::= <identifier> | <identifier> "." <nested_identifier>
 
-<identifier> ::= <letter> | <letter> <alphanumeric_characters>
+<identifier> ::= <letter> | <letter> <alphanumeric_characters> 
 
-<alphanumeric_characters> ::= <alphanumeric> | <alphanumeric> <alphanumeric_characters>
+### primitives ###
+<alphanumerics> ::= <alphanumeric> | <alphanumeric> <alphanumerics>
 
 <alphanumeric> ::= <digit> | <letter>
 
