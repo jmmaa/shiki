@@ -26,3 +26,19 @@ pub fn letter(source: &'static [u8], read_position: usize) -> Result<Context> {
         }
     }
 }
+
+#[cfg(test)]
+mod test_letter {
+
+    use crate::parser::primitive::letter;
+
+    #[test]
+    fn test_letter_parser() {
+        assert!(letter(b"a", 0).is_ok());
+        assert!(letter(b"A", 0).is_ok());
+        assert!(letter(b"&", 0).is_err());
+        assert!(letter(b"0", 0).is_err());
+        assert!(letter(b"1", 0).is_err());
+        assert!(letter(b"", 0).is_err());
+    }
+}

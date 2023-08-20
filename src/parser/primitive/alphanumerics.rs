@@ -15,7 +15,6 @@ pub fn alphanumerics(source: &'static [u8], read_position: usize) -> Result<Cont
 
             match alphanumeric(source, read_position) {
                 Ok(_) => alphanumerics(source, read_position),
-
                 Err(_) => {
                     if let Some(b'_') = source.get(read_position) {
                         alphanumerics(source, read_position + 1)
