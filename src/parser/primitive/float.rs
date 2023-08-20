@@ -11,11 +11,11 @@ pub fn float(source: &'static [u8], read_position: usize) -> Result<(&'static [u
         Ok(result) => {
             let (source, read_position) = result;
 
-            if let Some(&b) = source.get(read_position) {
-                if b == b'.' {
+            if let Some(byte) = source.get(read_position) {
+                if *byte == b'.' {
                     digits(source, read_position + 1)
                 } else {
-                    let result = Error::Generic(f!("expected a '.', got '{}'", b as char));
+                    let result = Error::Generic(f!("expected a '.', got '{}'", *byte as char));
 
                     Err(result)
                 }

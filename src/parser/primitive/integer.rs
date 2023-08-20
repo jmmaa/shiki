@@ -7,10 +7,9 @@ use crate::parser::primitive::natural::natural;
 /// <integer> ::= "+" <natural> | "-" <natural> | <natural>
 /// ```
 pub fn integer(source: &'static [u8], read_position: usize) -> Result<(&'static [u8], usize)> {
-    if let Some(&b) = source.get(read_position) {
-        if b == b'+' || b == b'-' {
-            let read_position = read_position + 1;
-            natural(source, read_position)
+    if let Some(byte) = source.get(read_position) {
+        if *byte == b'+' || *byte == b'-' {
+            natural(source, read_position + 1)
         } else {
             natural(source, read_position)
         }
