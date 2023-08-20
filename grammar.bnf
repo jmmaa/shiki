@@ -1,8 +1,7 @@
-; NUMBER
-### nodes ###
+# NUMBER NODE
+
 <number> ::= <float> | <integer> 
 
-### primitives ###
 <float> ::= <integer> "." <digits>
 
 <integer> ::= "+" <natural> | "-" <natural> | <natural>
@@ -18,14 +17,10 @@
 <nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
 
-; IDENTIFIER
-
-### nodes ###
-<nested_identifier> ::= <identifier> | <identifier> "." <nested_identifier>
+# IDENTIFIER NODE
 
 <identifier> ::= <letter> | <letter> <alphanumeric_characters> 
 
-### primitives ###
 <alphanumerics> ::= <alphanumeric> | <alphanumeric> <alphanumerics>
 
 <alphanumeric> ::= <digit> | <letter>
@@ -45,5 +40,10 @@
                      | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
 
 
-; STRING
-; TODO
+# NESTED IDENTIFIER NODE
+
+<nested_identifier> ::= <identifier> | <identifier> <optional_whitespaces> "." <optional_whitespaces> <nested_identifier>
+
+<optional_whitespaces> ::=  "" | <whitespace> <optional_whitespaces>
+
+<whitespace> ::=  "\n" | "\r" | "\t" | " "
