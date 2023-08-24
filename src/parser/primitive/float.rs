@@ -4,7 +4,7 @@ use crate::parser::primitive::{digits::digits, integer::integer};
 
 /// This parser is represented with the bnf grammar below
 /// ```bnf
-/// <float> ::= <integer> "." <digits1>
+/// <float> ::= <integer> "." <digits>
 /// ```
 pub fn float(source: &'static [u8], read_position: usize) -> Result<(&'static [u8], usize)> {
     match integer(source, read_position) {
