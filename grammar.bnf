@@ -1,6 +1,12 @@
 # NUMBER NODE
+<number> ::= <float> | <integer> | <exponential>
 
-<number> ::= <float> | <integer> 
+<exponential> ::= <float> "e" "+" <digits> |
+                  <float> "e" "-" <digits> | 
+                  <float> "e" <digits>     |
+                  <integer> "e" "+" <digits> |
+                  <integer> "e" "-" <digits> |
+                  <integer> "e" <digits>
 
 <float> ::= <integer> "." <digits>
 
