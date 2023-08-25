@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use tailcall::tailcall;
 
-use crate::parser::primitive::alphanumeric;
+use super::alphanumeric;
 /// This parser is represented with the bnf grammar below
 /// ```bnf
 /// <alphanumerics> ::= <alphanumeric> | <alphanumeric> <alphanumerics>

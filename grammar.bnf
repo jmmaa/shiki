@@ -53,3 +53,16 @@
 <optional_whitespaces> ::=  "" | <whitespace> <optional_whitespaces>
 
 <whitespace> ::=  "\n" | "\r" | "\t" | " "
+
+# STRING
+
+<string> ::= "\""  "\\" <escape_sequence> | <any> "\""
+
+
+<escape_sequence> ::=  "\\"  "\\" | "\"" | "b" | "f" | "n" | "r" | "t" | "u" <hexdigit_group>
+
+<hexdigit_group> ::= <hexdigit> <hexdigit> <hexdigit> <hexdigit>
+
+<hexdigit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" |
+               "A" | "B" | "C" | "D" | "E" | "F" |
+               "a" | "b" | "c" | "d" | "e" | "f"
