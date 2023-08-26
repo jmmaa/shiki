@@ -389,6 +389,34 @@ fn test_float() {
     assert_eq!(position, 5);
 }
 
+fn resolve_float(context: Context) -> Result<(&'static [u8], Context)> {
+    digits(context)
+}
+
+fn resolve_exponent(context: Context) -> Result<(&'static [u8], Context)> {
+    let source = context.source();
+    let position = context.position();
+
+    match source.get(position) {
+        Some(byte) => {
+            if byte.is_ascii_plus() || byte.is_ascii_minus() {
+                let context = Context::new(source, position + 1);
+
+                digits(context)
+            } else {
+                let context = Context::new(source, position);
+
+                digits(context)
+            }
+        }
+        None => {
+            let result = Error::Generic("expected a digit, '+', or '-', got none".to_string());
+
+            Err(result)
+        }
+    }
+}
+
 // REFACTOR THIS
 pub fn number(context: Context) -> Result<(&'static [u8], Context)> {
     match integer(context) {
@@ -400,78 +428,33 @@ pub fn number(context: Context) -> Result<(&'static [u8], Context)> {
 
             if let Some(byte) = source.get(position) {
                 if byte.is_ascii_period() {
-                    match digits(Context::new(source, position + 1)) {
-                        Ok(result) => {
-                            let (_, context) = result;
-
+                    match resolve_float(Context::new(source, position + 1)) {
+                        Ok((parsed, context)) => {
+                            let source = context.source();
                             let position = context.position();
 
-                            match source.get(position) {
-                                Some(byte) => {
-                                    if byte.as_char() == 'e' {
-                                        let position = position + 1;
+                            if let Some(byte) = source.get(position) {
+                                if byte.as_char() == 'e' {
+                                    let context = Context::new(source, position + 1);
 
-                                        match source.get(position) {
-                                            Some(byte) => {
-                                                if byte.is_ascii_plus() || byte.is_ascii_minus() {
-                                                    let context =
-                                                        Context::new(source, position + 1);
-
-                                                    digits(context)
-                                                } else {
-                                                    let context = Context::new(source, position);
-
-                                                    digits(context)
-                                                }
-                                            }
-                                            None => {
-                                                let result = Error::Generic(
-                                                    "expected a digit, '+', or '-', got none"
-                                                        .to_string(),
-                                                );
-
-                                                Err(result)
-                                            }
-                                        }
-                                    } else {
-                                        let result = (parsed, context);
-
-                                        Ok(result)
-                                    }
-                                }
-                                None => {
+                                    resolve_exponent(context)
+                                } else {
                                     let result = (parsed, context);
 
                                     Ok(result)
                                 }
+                            } else {
+                                let result = (parsed, context);
+
+                                Ok(result)
                             }
                         }
-
                         Err(result) => Err(result),
                     }
                 } else if byte.as_char() == 'e' {
-                    let position = position + 1;
+                    let context = Context::new(source, position + 1);
 
-                    match source.get(position) {
-                        Some(byte) => {
-                            if byte.is_ascii_plus() || byte.is_ascii_minus() {
-                                let context = Context::new(source, position + 1);
-
-                                digits(context)
-                            } else {
-                                let context = Context::new(source, position);
-
-                                digits(context)
-                            }
-                        }
-                        None => {
-                            let result = Error::Generic(
-                                "expected a digit, '+', or '-', got none".to_string(),
-                            );
-
-                            Err(result)
-                        }
-                    }
+                    resolve_exponent(context)
                 } else {
                     let result = (parsed, context);
 
