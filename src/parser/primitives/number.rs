@@ -2,12 +2,12 @@ use super::prelude::*;
 
 use super::context::Context;
 
-use super::utils::{ByteSliceUtil, ByteUtil};
+use super::utils::ByteUtil;
 
 use tailcall::tailcall;
 
 #[tailcall]
-fn digits_split_position(source: &'static [u8], position: usize) -> Result<Context> {
+fn digits_split_position(source: &'_ [u8], position: usize) -> Result<Context> {
     match source.get(position) {
         Some(byte) => {
             if byte.is_ascii_digit() {
@@ -47,7 +47,7 @@ fn digits_split_position(source: &'static [u8], position: usize) -> Result<Conte
 }
 
 #[inline(always)]
-pub fn digits(ctx: Context) -> Result<(&'static [u8], Context)> {
+pub fn digits(ctx: Context) -> Result<(&'_ [u8], Context)> {
     let result = digits_split_position(ctx.source(), ctx.position());
 
     result.map(|ctx| {
@@ -95,7 +95,7 @@ fn test_digits() {
 }
 
 #[inline(always)]
-pub fn natural(ctx: Context) -> Result<(&'static [u8], Context)> {
+pub fn natural(ctx: Context) -> Result<(&'_ [u8], Context)> {
     match ctx.get_byte() {
         Some(byte) => {
             if byte.is_ascii_nonzero_digit() {
@@ -183,7 +183,7 @@ fn test_natural() {
 }
 
 #[inline(always)]
-pub fn integer(ctx: Context) -> Result<(&'static [u8], Context)> {
+pub fn integer(ctx: Context) -> Result<(&'_ [u8], Context)> {
     match ctx.get_byte() {
         Some(byte) => {
             if byte.is_ascii_minus() || byte.is_ascii_plus() {
@@ -255,93 +255,93 @@ fn test_integer() {
     assert_eq!(position, 3);
 }
 
-pub fn float(ctx: Context) -> Result<(&'static [u8], Context)> {
-    match integer(ctx) {
-        Ok((_, ctx)) => {
-            if let Some(byte) = ctx.get_byte() {
-                if byte.is_ascii_period() {
-                    let ctx = Context::new(ctx.source(), ctx.position() + 1);
+// pub fn float(ctx: Context) -> Result<(&'_ [u8], Context)> {
+//     match integer(ctx) {
+//         Ok((_, ctx)) => {
+//             if let Some(byte) = ctx.get_byte() {
+//                 if byte.is_ascii_period() {
+//                     let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
-                    digits(ctx)
-                } else {
-                    let result = Error::Generic(f!("expected a '.', got '{}'", byte.as_char()));
+//                     digits(ctx)
+//                 } else {
+//                     let result = Error::Generic(f!("expected a '.', got '{}'", byte.as_char()));
 
-                    Err(result)
-                }
-            } else {
-                let result = Error::Generic("expected a '.', got none".to_string());
+//                     Err(result)
+//                 }
+//             } else {
+//                 let result = Error::Generic("expected a '.', got none".to_string());
 
-                Err(result)
-            }
-        }
-        Err(result) => Err(result),
-    }
-}
+//                 Err(result)
+//             }
+//         }
+//         Err(result) => Err(result),
+//     }
+// }
 
-#[test]
-fn test_float() {
-    assert!(float(Context::new(b"123", 0)).is_err());
-    assert!(float(Context::new(b"123a", 0)).is_err());
-    assert!(float(Context::new(b"0", 0)).is_err());
-    assert!(float(Context::new(b"1", 0)).is_err());
-    assert!(float(Context::new(b"+0", 0)).is_err());
-    assert!(float(Context::new(b"-1", 0)).is_err());
-    assert!(float(Context::new(b"a", 0)).is_err());
-    assert!(float(Context::new(b"+", 0)).is_err());
-    assert!(float(Context::new(b"-", 0)).is_err());
-    assert!(float(Context::new(b"", 0)).is_err());
-    assert!(float(Context::new(b"123.123", 0)).is_ok());
-    assert!(float(Context::new(b"123_123.123", 0)).is_ok());
-    assert!(float(Context::new(b"0.1", 0)).is_ok());
-    assert!(float(Context::new(b"1.2", 0)).is_ok());
-    assert!(float(Context::new(b"+0.0", 0)).is_ok());
-    assert!(float(Context::new(b"-1.0", 0)).is_ok());
+// #[test]
+// fn test_float() {
+//     assert!(float(Context::new(b"123", 0)).is_err());
+//     assert!(float(Context::new(b"123a", 0)).is_err());
+//     assert!(float(Context::new(b"0", 0)).is_err());
+//     assert!(float(Context::new(b"1", 0)).is_err());
+//     assert!(float(Context::new(b"+0", 0)).is_err());
+//     assert!(float(Context::new(b"-1", 0)).is_err());
+//     assert!(float(Context::new(b"a", 0)).is_err());
+//     assert!(float(Context::new(b"+", 0)).is_err());
+//     assert!(float(Context::new(b"-", 0)).is_err());
+//     assert!(float(Context::new(b"", 0)).is_err());
+//     assert!(float(Context::new(b"123.123", 0)).is_ok());
+//     assert!(float(Context::new(b"123_123.123", 0)).is_ok());
+//     assert!(float(Context::new(b"0.1", 0)).is_ok());
+//     assert!(float(Context::new(b"1.2", 0)).is_ok());
+//     assert!(float(Context::new(b"+0.0", 0)).is_ok());
+//     assert!(float(Context::new(b"-1.0", 0)).is_ok());
 
-    assert!(float(Context::new(b"123_123.21_", 0)).is_err());
-    assert!(float(Context::new(b"_123", 0)).is_err());
+//     assert!(float(Context::new(b"123_123.21_", 0)).is_err());
+//     assert!(float(Context::new(b"_123", 0)).is_err());
 
-    let case = float(Context::new(b"123.1", 0)).unwrap();
+//     let case = float(Context::new(b"123.1", 0)).unwrap();
 
-    let position = case.1.position();
+//     let position = case.1.position();
 
-    assert_eq!(position, 5);
+//     assert_eq!(position, 5);
 
-    let case = float(Context::new(b"0.12", 0)).unwrap();
+//     let case = float(Context::new(b"0.12", 0)).unwrap();
 
-    let position = case.1.position();
+//     let position = case.1.position();
 
-    assert_eq!(position, 4);
+//     assert_eq!(position, 4);
 
-    let case = float(Context::new(b"1.0", 0)).unwrap();
+//     let case = float(Context::new(b"1.0", 0)).unwrap();
 
-    let position = case.1.position();
+//     let position = case.1.position();
 
-    assert_eq!(position, 3);
+//     assert_eq!(position, 3);
 
-    let case = float(Context::new(b"123.34", 0)).unwrap();
+//     let case = float(Context::new(b"123.34", 0)).unwrap();
 
-    let position = case.1.position();
+//     let position = case.1.position();
 
-    assert_eq!(position, 6);
+//     assert_eq!(position, 6);
 
-    let case = float(Context::new(b"-0.12", 0)).unwrap();
+//     let case = float(Context::new(b"-0.12", 0)).unwrap();
 
-    let position = case.1.position();
+//     let position = case.1.position();
 
-    assert_eq!(position, 5);
+//     assert_eq!(position, 5);
 
-    let case = float(Context::new(b"-23.0", 0)).unwrap();
+//     let case = float(Context::new(b"-23.0", 0)).unwrap();
 
-    let position = case.1.position();
+//     let position = case.1.position();
 
-    assert_eq!(position, 5);
-}
+//     assert_eq!(position, 5);
+// }
 
-fn resolve_float(ctx: Context) -> Result<(&'static [u8], Context)> {
+fn resolve_float(ctx: Context) -> Result<(&'_ [u8], Context)> {
     digits(ctx)
 }
 
-fn resolve_exponent(ctx: Context) -> Result<(&'static [u8], Context)> {
+fn resolve_exponent(ctx: Context) -> Result<(&'_ [u8], Context)> {
     match ctx.get_byte() {
         Some(byte) => {
             if byte.is_ascii_plus() || byte.is_ascii_minus() {
@@ -361,7 +361,7 @@ fn resolve_exponent(ctx: Context) -> Result<(&'static [u8], Context)> {
 }
 
 // REFACTOR THIS
-pub fn number(ctx: Context) -> Result<(&'static [u8], Context)> {
+pub fn number(ctx: Context) -> Result<(&'_ [u8], Context)> {
     match integer(ctx) {
         Ok((parsed, ctx)) => {
             if let Some(byte) = ctx.get_byte() {

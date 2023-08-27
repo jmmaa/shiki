@@ -1,12 +1,12 @@
 #[derive(Debug)]
-pub struct Context {
-    s: &'static [u8],
+pub struct Context<'src> {
+    s: &'src [u8],
     p: usize,
 }
 
-impl Context {
+impl<'src> Context<'src> {
     #[inline]
-    pub fn source(&self) -> &'static [u8] {
+    pub fn source(&self) -> &'src [u8] {
         self.s
     }
 
@@ -21,12 +21,12 @@ impl Context {
     }
 
     #[inline]
-    pub fn get_left_slice(&self) -> &'static [u8] {
+    pub fn get_left_slice(&self) -> &'src [u8] {
         &self.s[..self.p]
     }
 
     #[inline]
-    pub fn new(source: &'static [u8], position: usize) -> Context {
+    pub fn new(source: &'src [u8], position: usize) -> Context<'src> {
         Context {
             s: source,
             p: position,
