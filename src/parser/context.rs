@@ -16,12 +16,12 @@ impl<'src> Context<'src> {
     }
 
     #[inline]
-    pub fn get_byte(&self) -> Option<&u8> {
+    pub fn get_current_byte(&self) -> Option<&u8> {
         self.s.get(self.p)
     }
 
     #[inline]
-    pub fn get_left_slice(&self) -> &'src [u8] {
+    pub fn get_current_slice(&self) -> &'src [u8] {
         &self.s[..self.p]
     }
 

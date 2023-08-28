@@ -7,29 +7,26 @@ use super::utils::ByteUtil;
 use tailcall::tailcall;
 
 #[tailcall]
-fn digits_split_position(source: &'_ [u8], position: usize) -> Result<Context> {
+fn digits_split_position(source: &[u8], position: usize) -> Result<Context> {
     match source.get(position) {
         Some(byte) => {
             if byte.is_ascii_digit() {
                 let position = position + 1;
 
-                match source.get(position) {
-                    Some(byte) => {
-                        if byte.is_ascii_digit() {
-                            digits_split_position(source, position)
-                        } else if byte.is_ascii_underscore() {
-                            digits_split_position(source, position + 1)
-                        } else {
-                            let result = Context::new(source, position);
-
-                            Ok(result)
-                        }
-                    }
-                    None => {
+                if let Some(byte) = source.get(position) {
+                    if byte.is_ascii_digit() {
+                        digits_split_position(source, position)
+                    } else if byte.is_ascii_underscore() {
+                        digits_split_position(source, position + 1)
+                    } else {
                         let result = Context::new(source, position);
 
                         Ok(result)
                     }
+                } else {
+                    let result = Context::new(source, position);
+
+                    Ok(result)
                 }
             } else {
                 let result = Error::Generic(f!("expected a digit, got '{}'", *byte as char));
@@ -47,14 +44,10 @@ fn digits_split_position(source: &'_ [u8], position: usize) -> Result<Context> {
 }
 
 #[inline(always)]
-pub fn digits(ctx: Context) -> Result<(&'_ [u8], Context)> {
+pub fn digits(ctx: Context) -> Result<(&[u8], Context)> {
     let result = digits_split_position(ctx.source(), ctx.position());
 
-    result.map(|ctx| {
-        let parsed = ctx.get_left_slice();
-
-        (parsed, ctx)
-    })
+    result.map(|ctx| (ctx.get_current_slice(), ctx))
 }
 
 #[test]
@@ -95,39 +88,30 @@ fn test_digits() {
 }
 
 #[inline(always)]
-pub fn natural(ctx: Context) -> Result<(&'_ [u8], Context)> {
-    match ctx.get_byte() {
+pub fn natural(ctx: Context) -> Result<(&[u8], Context)> {
+    match ctx.get_current_byte() {
         Some(byte) => {
             if byte.is_ascii_nonzero_digit() {
                 let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
-                match ctx.get_byte() {
-                    Some(byte) => {
-                        if byte.is_ascii_digit() {
-                            let ctx = Context::new(ctx.source(), ctx.position());
-
-                            digits(ctx)
-                        } else if byte == &b'0' {
-                            let ctx = Context::new(ctx.source(), ctx.position() + 1);
-
-                            digits(ctx)
-                        } else {
-                            let parsed = ctx.get_left_slice();
-                            let result = (parsed, ctx);
-
-                            Ok(result)
-                        }
-                    }
-                    None => {
-                        let parsed = ctx.get_left_slice();
+                if let Some(byte) = ctx.get_current_byte() {
+                    if byte.is_ascii_digit() {
+                        digits(ctx)
+                    } else {
+                        let parsed = ctx.get_current_slice();
                         let result = (parsed, ctx);
 
                         Ok(result)
                     }
+                } else {
+                    let parsed = ctx.get_current_slice();
+                    let result = (parsed, ctx);
+
+                    Ok(result)
                 }
             } else if byte.is_ascii_zero_digit() {
                 let ctx = Context::new(ctx.source(), ctx.position() + 1);
-                let parsed = ctx.get_left_slice();
+                let parsed = ctx.get_current_slice();
                 let result = (parsed, ctx);
 
                 Ok(result)
@@ -183,22 +167,18 @@ fn test_natural() {
 }
 
 #[inline(always)]
-pub fn integer(ctx: Context) -> Result<(&'_ [u8], Context)> {
-    match ctx.get_byte() {
-        Some(byte) => {
-            if byte.is_ascii_minus() || byte.is_ascii_plus() {
-                let ctx = Context::new(ctx.source(), ctx.position() + 1);
-                natural(ctx)
-            } else {
-                natural(ctx)
-            }
+pub fn integer(ctx: Context) -> Result<(&[u8], Context)> {
+    if let Some(byte) = ctx.get_current_byte() {
+        if byte.is_ascii_minus() || byte.is_ascii_plus() {
+            let ctx = Context::new(ctx.source(), ctx.position() + 1);
+            natural(ctx)
+        } else {
+            natural(ctx)
         }
+    } else {
+        let result = Error::Generic("expected an integer, got none".to_string());
 
-        None => {
-            let result = Error::Generic("expected an integer, got none".to_string());
-
-            Err(result)
-        }
+        Err(result)
     }
 }
 
@@ -255,10 +235,10 @@ fn test_integer() {
     assert_eq!(position, 3);
 }
 
-// pub fn float(ctx: Context) -> Result<(&'_ [u8], Context)> {
+// pub fn float(ctx: Context) -> Result<(&[u8], Context)> {
 //     match integer(ctx) {
 //         Ok((_, ctx)) => {
-//             if let Some(byte) = ctx.get_byte() {
+//             if let Some(byte) = ctx.get_current_byte() {
 //                 if byte.is_ascii_period() {
 //                     let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
@@ -337,12 +317,12 @@ fn test_integer() {
 //     assert_eq!(position, 5);
 // }
 
-fn resolve_float(ctx: Context) -> Result<(&'_ [u8], Context)> {
+fn resolve_float(ctx: Context) -> Result<(&[u8], Context)> {
     digits(ctx)
 }
 
-fn resolve_exponent(ctx: Context) -> Result<(&'_ [u8], Context)> {
-    match ctx.get_byte() {
+fn resolve_exponent(ctx: Context) -> Result<(&[u8], Context)> {
+    match ctx.get_current_byte() {
         Some(byte) => {
             if byte.is_ascii_plus() || byte.is_ascii_minus() {
                 let ctx = Context::new(ctx.source(), ctx.position() + 1);
@@ -361,16 +341,16 @@ fn resolve_exponent(ctx: Context) -> Result<(&'_ [u8], Context)> {
 }
 
 // REFACTOR THIS
-pub fn number(ctx: Context) -> Result<(&'_ [u8], Context)> {
+pub fn number(ctx: Context) -> Result<(&[u8], Context)> {
     match integer(ctx) {
         Ok((parsed, ctx)) => {
-            if let Some(byte) = ctx.get_byte() {
+            if let Some(byte) = ctx.get_current_byte() {
                 if byte.is_ascii_period() {
                     let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
                     match resolve_float(ctx) {
                         Ok((parsed, ctx)) => {
-                            if let Some(byte) = ctx.get_byte() {
+                            if let Some(byte) = ctx.get_current_byte() {
                                 if byte.as_char() == 'e' {
                                     let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
