@@ -1,5 +1,3 @@
-//
-
 pub trait ByteSliceUtil<'a> {
     fn slice_until(&self, position: usize) -> &'a [u8];
 }
@@ -23,8 +21,6 @@ pub trait ByteUtil {
     fn is_ascii_minus(&self) -> bool;
 
     fn is_ascii_period(&self) -> bool;
-
-    //
 
     fn as_char(&self) -> char;
 }
