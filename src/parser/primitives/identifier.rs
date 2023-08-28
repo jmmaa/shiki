@@ -99,3 +99,41 @@ fn test_alphanumerics() {
 
     assert_eq!(position, 12);
 }
+
+// EXPERIMENTAL
+
+#[tailcall]
+pub fn alphanumerics_split_position_v2<'src>(source: &[u8], position: usize) -> Result<Context> {
+    if let Some(&byte) = source.get(position) {
+        if byte.is_ascii_alphanumeric() {
+            let position = position + 1;
+
+            match source.get(position) {
+                Some(&byte) => {
+                    if byte.is_ascii_alphanumeric() {
+                        alphanumerics_split_position(source, position)
+                    } else if byte.is_ascii_underscore() {
+                        alphanumerics_split_position(source, position + 1)
+                    } else {
+                        let result = Context::new(source, position);
+
+                        Ok(result)
+                    }
+                }
+                None => {
+                    let result = Context::new(source, position);
+
+                    Ok(result)
+                }
+            }
+        } else {
+            let result = Error::Generic(f!("expected a letter or digit, got '{}'", byte as char));
+
+            Err(result)
+        }
+    } else {
+        let result = Error::Generic("expected a letter or digit, got none".to_string());
+
+        Err(result)
+    }
+}
