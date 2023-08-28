@@ -116,7 +116,7 @@ pub fn natural(ctx: Context) -> Result<(&[u8], Context)> {
 
                 Ok(result)
             } else {
-                let result = Error::Generic(f!("expected a digit, got '{}'", *byte as char));
+                let result = Error::Generic(f!("expected a digit, got '{}'", byte.as_char()));
 
                 Err(result)
             }
@@ -322,21 +322,18 @@ fn resolve_float(ctx: Context) -> Result<(&[u8], Context)> {
 }
 
 fn resolve_exponent(ctx: Context) -> Result<(&[u8], Context)> {
-    match ctx.get_current_byte() {
-        Some(byte) => {
-            if byte.is_ascii_plus() || byte.is_ascii_minus() {
-                let ctx = Context::new(ctx.source(), ctx.position() + 1);
+    if let Some(byte) = ctx.get_current_byte() {
+        if byte.is_ascii_plus() || byte.is_ascii_minus() {
+            let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
-                digits(ctx)
-            } else {
-                digits(ctx)
-            }
+            digits(ctx)
+        } else {
+            digits(ctx)
         }
-        None => {
-            let result = Error::Generic("expected a digit, '+', or '-', got none".to_string());
+    } else {
+        let result = Error::Generic("expected a digit, '+', or '-', got none".to_string());
 
-            Err(result)
-        }
+        Err(result)
     }
 }
 

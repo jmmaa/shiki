@@ -25,6 +25,13 @@ impl<'src> Context<'src> {
         &self.s[..self.p]
     }
 
+    /// this consumes the current context and creates a new
+    /// one that has an incremented position
+    // #[inline]
+    // pub fn get_next_context(self) -> Context<'src> {
+    //     Context::new(self.source(), self.position() + 1)
+    // }
+
     #[inline]
     pub fn new(source: &'src [u8], position: usize) -> Context<'src> {
         Context {
