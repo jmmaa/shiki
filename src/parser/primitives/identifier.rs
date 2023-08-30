@@ -6,7 +6,7 @@ use super::utils::ByteUtil;
 use tailcall::tailcall;
 
 #[tailcall]
-pub fn alphanumerics_split_position(source: &[u8], position: usize) -> Result<Context> {
+pub fn alphanumerics_split_position(source: &[u8], position: usize) -> Result<(&[u8], usize)> {
     if let Some(&byte) = source.get(position) {
         if byte.is_ascii_alphanumeric() {
             let position = position + 1;
@@ -18,13 +18,13 @@ pub fn alphanumerics_split_position(source: &[u8], position: usize) -> Result<Co
                     } else if byte.is_ascii_underscore() {
                         alphanumerics_split_position(source, position + 1)
                     } else {
-                        let result = Context::new(source, position);
+                        let result = (source, position);
 
                         Ok(result)
                     }
                 }
                 None => {
-                    let result = Context::new(source, position);
+                    let result = (source, position);
 
                     Ok(result)
                 }
@@ -56,11 +56,14 @@ fn test_alphanumerics_split_position() {
 pub fn alphanumerics(ctx: Context) -> Result<(&[u8], Context)> {
     let result = alphanumerics_split_position(ctx.source(), ctx.position());
 
-    result.map(|ctx| (ctx.get_current_slice(), ctx))
+    result.map(|(source, position)| {
+        let ctx = Context::new(source, position);
+
+        (ctx.get_current_slice(), ctx)
+    })
 }
 
 #[test]
-
 fn test_alphanumerics() {
     assert!(alphanumerics(Context::new(b"123", 0)).is_ok());
     assert!(alphanumerics(Context::new(b"abcd", 0)).is_ok());
