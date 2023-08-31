@@ -7,7 +7,7 @@ use super::utils::ByteUtil;
 use tailcall::tailcall;
 
 #[tailcall]
-fn digits_split_position(source: &[u8], position: usize) -> Result<(&[u8], usize)> {
+fn digits_split_position(source: &[u8], position: usize) -> Result<Context> {
     if let Some(byte) = source.get(position) {
         if byte.is_ascii_digit() {
             let position = position + 1;
@@ -18,12 +18,12 @@ fn digits_split_position(source: &[u8], position: usize) -> Result<(&[u8], usize
                 } else if byte.is('_') {
                     digits_split_position(source, position + 1)
                 } else {
-                    let result = (source, position);
+                    let result = Context::new(source, position);
 
                     Ok(result)
                 }
             } else {
-                let result = (source, position);
+                let result = Context::new(source, position);
 
                 Ok(result)
             }
@@ -43,11 +43,7 @@ fn digits_split_position(source: &[u8], position: usize) -> Result<(&[u8], usize
 pub fn digits(ctx: Context) -> Result<(&[u8], Context)> {
     let result = digits_split_position(ctx.source(), ctx.position());
 
-    result.map(|(source, position)| {
-        let ctx = Context::new(source, position);
-
-        (ctx.get_current_slice(), ctx)
-    })
+    result.map(|ctx| (ctx.get_current_slice(), ctx))
 }
 
 #[test]
@@ -96,15 +92,13 @@ pub fn natural(ctx: Context) -> Result<(&[u8], Context)> {
             if let Some(b'0'..=b'9') = ctx.get_current_byte() {
                 digits(ctx)
             } else {
-                let parsed = ctx.get_current_slice();
-                let result = (parsed, ctx);
+                let result = (ctx.get_current_slice(), ctx);
 
                 Ok(result)
             }
         } else if byte.is('0') {
             let ctx = Context::new(ctx.source(), ctx.position() + 1);
-            let parsed = ctx.get_current_slice();
-            let result = (parsed, ctx);
+            let result = (ctx.get_current_slice(), ctx);
 
             Ok(result)
         } else {
