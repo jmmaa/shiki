@@ -5,18 +5,18 @@ use super::utils::ByteUtil;
 
 use tailcall::tailcall;
 
-pub enum StringParseState {
+pub enum State {
     Starting,
     Consuming,
     Ending,
 }
 
-pub fn _string(state: StringParseState, source: &[u8], position: usize) -> Result<Context> {
+pub fn string_split_position(state: State, source: &[u8], position: usize) -> Result<Context> {
     match state {
-        StringParseState::Starting => {
+        State::Starting => {
             if let Some(byte) = source.get(position) {
                 if byte == &b'"' {
-                    _string(StringParseState::Consuming, source, position + 1)
+                    string_split_position(State::Consuming, source, position + 1)
                 } else {
                     let result = Error::Generic(f!("expected a '\"', got '{}'", byte.as_char()));
 
@@ -29,10 +29,10 @@ pub fn _string(state: StringParseState, source: &[u8], position: usize) -> Resul
             }
         }
 
-        StringParseState::Consuming => {
+        State::Consuming => {
             if let Some(byte) = source.get(position) {
                 if byte == &b'"' {
-                    _string(StringParseState::Ending, source, position)
+                    string_split_position(State::Ending, source, position)
                 } else if byte == &b'\\' {
                     let position = position + 1;
 
@@ -46,7 +46,7 @@ pub fn _string(state: StringParseState, source: &[u8], position: usize) -> Resul
                             || byte == &b'r'
                             || byte == &b't'
                         {
-                            _string(StringParseState::Consuming, source, position + 1)
+                            string_split_position(State::Consuming, source, position + 1)
                         } else if byte == &b'u' {
                             let position = position + 1;
 
@@ -54,7 +54,7 @@ pub fn _string(state: StringParseState, source: &[u8], position: usize) -> Resul
 
                             match result {
                                 Ok((source, position)) => {
-                                    _string(StringParseState::Consuming, source, position)
+                                    string_split_position(State::Consuming, source, position)
                                 }
                                 Err(result) => Err(result),
                             }
@@ -84,7 +84,7 @@ pub fn _string(state: StringParseState, source: &[u8], position: usize) -> Resul
             }
         }
 
-        StringParseState::Ending => todo!(),
+        State::Ending => todo!(),
     }
 }
 

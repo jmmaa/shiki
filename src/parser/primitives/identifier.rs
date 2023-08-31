@@ -6,25 +6,25 @@ use super::utils::ByteUtil;
 use tailcall::tailcall;
 
 #[tailcall]
-pub fn alphanumerics_split_position(source: &[u8], position: usize) -> Result<(&[u8], usize)> {
+pub fn alphanumerics_split_position(source: &[u8], position: usize) -> Result<Context> {
     if let Some(&byte) = source.get(position) {
         if byte.is_ascii_alphanumeric() {
             let position = position + 1;
 
             match source.get(position) {
-                Some(&byte) => {
+                Some(byte) => {
                     if byte.is_ascii_alphanumeric() {
                         alphanumerics_split_position(source, position)
-                    } else if byte.is_ascii_underscore() {
+                    } else if byte.is('_') {
                         alphanumerics_split_position(source, position + 1)
                     } else {
-                        let result = (source, position);
+                        let result = Context::new(source, position);
 
                         Ok(result)
                     }
                 }
                 None => {
-                    let result = (source, position);
+                    let result = Context::new(source, position);
 
                     Ok(result)
                 }
@@ -56,11 +56,7 @@ fn test_alphanumerics_split_position() {
 pub fn alphanumerics(ctx: Context) -> Result<(&[u8], Context)> {
     let result = alphanumerics_split_position(ctx.source(), ctx.position());
 
-    result.map(|(source, position)| {
-        let ctx = Context::new(source, position);
-
-        (ctx.get_current_slice(), ctx)
-    })
+    result.map(|ctx| (ctx.get_current_slice(), ctx))
 }
 
 #[test]

@@ -15,7 +15,7 @@ fn digits_split_position(source: &[u8], position: usize) -> Result<(&[u8], usize
             if let Some(byte) = source.get(position) {
                 if byte.is_ascii_digit() {
                     digits_split_position(source, position)
-                } else if byte.is_ascii_underscore() {
+                } else if byte.is('_') {
                     digits_split_position(source, position + 1)
                 } else {
                     let result = (source, position);
@@ -89,43 +89,33 @@ fn test_digits() {
 
 #[inline(always)]
 pub fn natural(ctx: Context) -> Result<(&[u8], Context)> {
-    match ctx.get_current_byte() {
-        Some(byte) => {
-            if byte.is_ascii_nonzero_digit() {
-                let ctx = Context::new(ctx.source(), ctx.position() + 1);
+    if let Some(byte) = ctx.get_current_byte() {
+        if byte.is_ascii_digit() && byte.is_not('0') {
+            let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
-                if let Some(byte) = ctx.get_current_byte() {
-                    if byte.is_ascii_digit() {
-                        digits(ctx)
-                    } else {
-                        let parsed = ctx.get_current_slice();
-                        let result = (parsed, ctx);
-
-                        Ok(result)
-                    }
-                } else {
-                    let parsed = ctx.get_current_slice();
-                    let result = (parsed, ctx);
-
-                    Ok(result)
-                }
-            } else if byte.is_ascii_zero_digit() {
-                let ctx = Context::new(ctx.source(), ctx.position() + 1);
+            if let Some(b'0'..=b'9') = ctx.get_current_byte() {
+                digits(ctx)
+            } else {
                 let parsed = ctx.get_current_slice();
                 let result = (parsed, ctx);
 
                 Ok(result)
-            } else {
-                let result = Error::Generic(f!("expected a digit, got '{}'", byte.as_char()));
-
-                Err(result)
             }
-        }
-        None => {
-            let result = Error::Generic("expected a digit, got none".to_string());
+        } else if byte.is('0') {
+            let ctx = Context::new(ctx.source(), ctx.position() + 1);
+            let parsed = ctx.get_current_slice();
+            let result = (parsed, ctx);
+
+            Ok(result)
+        } else {
+            let result = Error::Generic(f!("expected a digit, got '{}'", byte.as_char()));
 
             Err(result)
         }
+    } else {
+        let result = Error::Generic("expected a digit, got none".to_string());
+
+        Err(result)
     }
 }
 
@@ -169,7 +159,7 @@ fn test_natural() {
 #[inline(always)]
 pub fn integer(ctx: Context) -> Result<(&[u8], Context)> {
     if let Some(byte) = ctx.get_current_byte() {
-        if byte.is_ascii_minus() || byte.is_ascii_plus() {
+        if byte.is('+') || byte.is('-') {
             let ctx = Context::new(ctx.source(), ctx.position() + 1);
             natural(ctx)
         } else {
@@ -243,7 +233,7 @@ fn resolve_float(ctx: Context) -> Result<(&[u8], Context)> {
 #[inline(always)]
 fn resolve_exponent(ctx: Context) -> Result<(&[u8], Context)> {
     if let Some(byte) = ctx.get_current_byte() {
-        if byte.is_ascii_plus() || byte.is_ascii_minus() {
+        if byte.is('+') || byte.is('-') {
             let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
             digits(ctx)
@@ -258,48 +248,36 @@ fn resolve_exponent(ctx: Context) -> Result<(&[u8], Context)> {
 }
 
 pub fn number(ctx: Context) -> Result<(&[u8], Context)> {
-    match integer(ctx) {
-        Ok((parsed, ctx)) => {
-            if let Some(byte) = ctx.get_current_byte() {
-                if byte.is_ascii_period() {
-                    let ctx = Context::new(ctx.source(), ctx.position() + 1);
+    let (parsed, ctx) = integer(ctx)?;
 
-                    match resolve_float(ctx) {
-                        Ok((parsed, ctx)) => {
-                            if let Some(byte) = ctx.get_current_byte() {
-                                if byte.as_char() == 'e' {
-                                    let ctx = Context::new(ctx.source(), ctx.position() + 1);
+    if let Some(byte) = ctx.get_current_byte() {
+        if byte.is('.') {
+            let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
-                                    resolve_exponent(ctx)
-                                } else {
-                                    let result = (parsed, ctx);
+            let (parsed, ctx) = resolve_float(ctx)?;
 
-                                    Ok(result)
-                                }
-                            } else {
-                                let result = (parsed, ctx);
+            if let Some(b'e') = ctx.get_current_byte() {
+                let ctx = Context::new(ctx.source(), ctx.position() + 1);
 
-                                Ok(result)
-                            }
-                        }
-                        Err(result) => Err(result),
-                    }
-                } else if byte.as_char() == 'e' {
-                    let ctx = Context::new(ctx.source(), ctx.position() + 1);
-
-                    resolve_exponent(ctx)
-                } else {
-                    let result = (parsed, ctx);
-
-                    Ok(result)
-                }
+                resolve_exponent(ctx)
             } else {
                 let result = (parsed, ctx);
 
                 Ok(result)
             }
+        } else if byte.is('e') {
+            let ctx = Context::new(ctx.source(), ctx.position() + 1);
+
+            resolve_exponent(ctx)
+        } else {
+            let result = (parsed, ctx);
+
+            Ok(result)
         }
-        Err(result) => Err(result),
+    } else {
+        let result = (parsed, ctx);
+
+        Ok(result)
     }
 }
 
