@@ -1,6 +1,6 @@
 pub mod identifier;
-pub mod inline_string;
 pub mod number;
+pub mod string;
 
 use crate::parser::context;
 use crate::prelude;

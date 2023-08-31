@@ -7,16 +7,16 @@ use super::utils::ByteUtil;
 use tailcall::tailcall;
 
 #[tailcall]
-fn digits_split_position(source: &[u8], position: usize) -> Result<Context> {
+fn recurse_digits(source: &[u8], position: usize) -> Result<Context> {
     if let Some(byte) = source.get(position) {
         if byte.is_ascii_digit() {
             let position = position + 1;
 
             if let Some(byte) = source.get(position) {
                 if byte.is_ascii_digit() {
-                    digits_split_position(source, position)
+                    recurse_digits(source, position)
                 } else if byte.is('_') {
-                    digits_split_position(source, position + 1)
+                    recurse_digits(source, position + 1)
                 } else {
                     let result = Context::new(source, position);
 
@@ -41,7 +41,7 @@ fn digits_split_position(source: &[u8], position: usize) -> Result<Context> {
 
 #[inline(always)]
 pub fn digits(ctx: Context) -> Result<(&[u8], Context)> {
-    let result = digits_split_position(ctx.source(), ctx.position());
+    let result = recurse_digits(ctx.source(), ctx.position());
 
     result.map(|ctx| (ctx.get_current_slice(), ctx))
 }

@@ -5,27 +5,41 @@ use super::utils::ByteUtil;
 
 use tailcall::tailcall;
 
-/*
+#[tailcall]
+fn recurse_inline_string_chars(source: &[u8], position: usize) -> Result<Context> {
+    if let Some(byte) = source.get(position) {
+        if byte.is('"') {
+            let result = Context::new(source, position + 1);
 
-<inline_string> ::= "\"" <inline_string_chars>
+            Ok(result)
+        } else if byte.is('\\') {
+            let ctx = Context::new(source, position + 1);
 
-<inline_string_chars> ::= <any_non_control_char> <inline_string_chars> | "\"" | "\\" <escape_sequence> <inline_string_chars>
+            let (_, ctx) = escape_sequence(ctx)?;
 
-<escape_sequence> ::= "\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "u" <hex_digits>
+            recurse_inline_string_chars(ctx.source(), ctx.position())
+        } else if !byte.is_ascii_control() {
+            recurse_inline_string_chars(source, position + 1)
+        } else {
+            let result = Error::Generic(f!(
+                "expected a non-control character, '\"', or '\\' , got '{}'",
+                byte.as_char()
+            ));
 
-<hex_digits> ::= <hex_digit> <hex_digit> <hex_digit> <hex_digit>
+            Err(result)
+        }
+    } else {
+        let result =
+            Error::Generic("expected a non-control character, '\"', or '\\', got none".to_string());
 
-<hex_digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" |
-                "A" | "B" | "C" | "D" | "E" | "F" |
-                "a" | "b" | "c" | "d" | "e" | "f"
-*/
-
-// ADD TESTS!
+        Err(result)
+    }
+}
 
 pub fn inline_string(ctx: Context) -> Result<(&[u8], Context)> {
     if let Some(byte) = ctx.get_current_byte() {
         if byte.is('"') {
-            let result = inline_string_chars(ctx.source(), ctx.position() + 1);
+            let result = recurse_inline_string_chars(ctx.source(), ctx.position() + 1);
 
             result.map(|ctx| (ctx.get_current_slice(), ctx))
         } else {
@@ -40,34 +54,24 @@ pub fn inline_string(ctx: Context) -> Result<(&[u8], Context)> {
     }
 }
 
-#[tailcall]
-fn inline_string_chars(source: &[u8], position: usize) -> Result<Context> {
-    if let Some(byte) = source.get(position) {
-        if byte.is('"') {
-            let result = Context::new(source, position + 1);
+#[test]
+fn test_inline_string() {
+    assert!(inline_string(Context::new(r#""Hello, World!""#.as_bytes(), 0)).is_ok());
+    assert!(inline_string(Context::new(r#""Hello, World!""#.as_bytes(), 0)).is_ok());
+    assert!(inline_string(Context::new(
+        r#""
+        Hello, World!""#
+            .as_bytes(),
+        0
+    ))
+    .is_err());
 
-            Ok(result)
-        } else if byte.is('\\') {
-            let ctx = Context::new(source, position + 1);
+    assert!(inline_string(Context::new(r#""""#.as_bytes(), 0)).is_ok());
+    assert!(inline_string(Context::new(r#"""#.as_bytes(), 0)).is_err());
+    assert!(inline_string(Context::new(r#""#.as_bytes(), 0)).is_err());
 
-            let (_, ctx) = escape_sequence(ctx)?;
-
-            inline_string_chars(ctx.source(), ctx.position())
-        } else if !byte.is_ascii_control() {
-            inline_string_chars(source, position + 1)
-        } else {
-            let result = Error::Generic(f!(
-                "expected a non-control character, '\"', or '\\' , got '{}'",
-                byte.as_char()
-            ));
-
-            Err(result)
-        }
-    } else {
-        let result = Error::Generic("expected a '\"', got none".to_string());
-
-        Err(result)
-    }
+    assert!(inline_string(Context::new(r#""\n""#.as_bytes(), 0)).is_ok());
+    assert!(inline_string(Context::new(r#""\uFFFF""#.as_bytes(), 0)).is_ok());
 }
 
 fn escape_sequence(ctx: Context) -> Result<(&[u8], Context)> {
@@ -120,14 +124,14 @@ fn test_escape_sequence() {
 }
 
 #[tailcall]
-fn consume_hex_digits_for(length: usize, source: &[u8], position: usize) -> Result<Context> {
+fn recurse_hexdigits(length: usize, source: &[u8], position: usize) -> Result<Context> {
     if length != 0 {
         if let Some(byte) = source.get(position) {
             if byte.is_ascii_hexdigit() {
                 let length = length - 1;
                 let position = position + 1;
 
-                consume_hex_digits_for(length, source, position)
+                recurse_hexdigits(length, source, position)
             } else {
                 let result = Error::Generic(f!("expected a hex digit, got '{}'", byte.as_char()));
 
@@ -146,7 +150,7 @@ fn consume_hex_digits_for(length: usize, source: &[u8], position: usize) -> Resu
 }
 
 fn resolve_hex_digits(ctx: Context) -> Result<(&[u8], Context)> {
-    let result = consume_hex_digits_for(4, ctx.source(), ctx.position());
+    let result = recurse_hexdigits(4, ctx.source(), ctx.position());
 
     result.map(|ctx| (ctx.get_current_slice(), ctx))
 }

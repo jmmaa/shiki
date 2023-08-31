@@ -6,16 +6,16 @@ use super::utils::ByteUtil;
 use tailcall::tailcall;
 
 #[tailcall]
-pub fn alphanumerics_split_position(source: &[u8], position: usize) -> Result<Context> {
+pub fn recurse_alphanumerics(source: &[u8], position: usize) -> Result<Context> {
     if let Some(&byte) = source.get(position) {
         if byte.is_ascii_alphanumeric() {
             let position = position + 1;
 
             if let Some(byte) = source.get(position) {
                 if byte.is_ascii_alphanumeric() {
-                    alphanumerics_split_position(source, position)
+                    recurse_alphanumerics(source, position)
                 } else if byte.is('_') {
-                    alphanumerics_split_position(source, position + 1)
+                    recurse_alphanumerics(source, position + 1)
                 } else {
                     let result = Context::new(source, position);
 
@@ -41,17 +41,17 @@ pub fn alphanumerics_split_position(source: &[u8], position: usize) -> Result<Co
 #[test]
 
 fn test_alphanumerics_split_position() {
-    assert!(alphanumerics_split_position(b"123", 0).is_ok());
-    assert!(alphanumerics_split_position(b"abcd", 0).is_ok());
-    assert!(alphanumerics_split_position(b"abcd123", 0).is_ok());
-    assert!(alphanumerics_split_position(b"123abcd", 0).is_ok());
-    assert!(alphanumerics_split_position(b"abcd_123", 0).is_ok());
-    assert!(alphanumerics_split_position(b"-", 0).is_err());
+    assert!(recurse_alphanumerics(b"123", 0).is_ok());
+    assert!(recurse_alphanumerics(b"abcd", 0).is_ok());
+    assert!(recurse_alphanumerics(b"abcd123", 0).is_ok());
+    assert!(recurse_alphanumerics(b"123abcd", 0).is_ok());
+    assert!(recurse_alphanumerics(b"abcd_123", 0).is_ok());
+    assert!(recurse_alphanumerics(b"-", 0).is_err());
 }
 
 #[inline(always)]
 pub fn alphanumerics(ctx: Context) -> Result<(&[u8], Context)> {
-    let result = alphanumerics_split_position(ctx.source(), ctx.position());
+    let result = recurse_alphanumerics(ctx.source(), ctx.position());
 
     result.map(|ctx| (ctx.get_current_slice(), ctx))
 }
