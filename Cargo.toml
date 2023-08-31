@@ -12,5 +12,4 @@ thiserror = "1.0.47"
 
 
 [profile.release]
-lto = true
-level = 3
+debug = true

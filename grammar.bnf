@@ -1,14 +1,13 @@
 # NUMBER
-<number> ::= <float> | <integer> | <exponential>
+<number> ::= <integer> | 
+             <integer> "." <float_tail>    | 
+             <integer> "e" <exponent_tail> |
+             <integer> "." <float_tail> "e" <exponent_tail>
 
-<exponential> ::= <float> "e" "+" <digits> |
-                  <float> "e" "-" <digits> | 
-                  <float> "e" <digits>     |
-                  <integer> "e" "+" <digits> |
-                  <integer> "e" "-" <digits> |
-                  <integer> "e" <digits>
 
-<float> ::= <integer> "." <digits>
+<exponent_tail> ::= "+" <digits> | "-" <digits>
+
+<float_tail> ::= <digits>
 
 <integer> ::= "+" <natural> | "-" <natural> | <natural>
 
@@ -25,13 +24,7 @@
 
 # IDENTIFIER
 
-<identifier> ::= <letter> <alphanumerics> <optional_whitespaces> "." <optional_whitespaces> <identifier> |
-                 <letter> <alphanumerics> |
-                 <letter>
-
-<optional_whitespaces> ::=  E | <whitespace> <optional_whitespaces>
-
-<whitespace> ::=  "\n" | "\r" | "\t" | " "
+<identifier> ::= <letter> | <letter> <alphanumerics>
 
 <alphanumerics> ::= <alphanumeric> | <alphanumeric> <alphanumerics> | <alphanumeric> "_" <alphanumerics>
 
@@ -55,9 +48,6 @@
 
 # STRING
 
-<string> ::= "\"" <any non-control characters> | E "\""
-
-
+<inline_string> ::= "\"" <inline_string_chars>
+<inline_string_chars> ::= <inline_string_char> <inline_string_chars> | "\""
 # MULTILINE STRING
-
-<string> ::= "\"" "\"" "\"" <any characters> | E "\"" "\"" "\""

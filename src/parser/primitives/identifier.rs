@@ -11,23 +11,20 @@ pub fn alphanumerics_split_position(source: &[u8], position: usize) -> Result<Co
         if byte.is_ascii_alphanumeric() {
             let position = position + 1;
 
-            match source.get(position) {
-                Some(byte) => {
-                    if byte.is_ascii_alphanumeric() {
-                        alphanumerics_split_position(source, position)
-                    } else if byte.is('_') {
-                        alphanumerics_split_position(source, position + 1)
-                    } else {
-                        let result = Context::new(source, position);
-
-                        Ok(result)
-                    }
-                }
-                None => {
+            if let Some(byte) = source.get(position) {
+                if byte.is_ascii_alphanumeric() {
+                    alphanumerics_split_position(source, position)
+                } else if byte.is('_') {
+                    alphanumerics_split_position(source, position + 1)
+                } else {
                     let result = Context::new(source, position);
 
                     Ok(result)
                 }
+            } else {
+                let result = Context::new(source, position);
+
+                Ok(result)
             }
         } else {
             let result = Error::Generic(f!("expected a letter or digit, got '{}'", byte as char));
