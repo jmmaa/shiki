@@ -1,25 +1,27 @@
 use super::prelude::*;
 
-use super::context::Context;
 use super::utils::ByteUtil;
 
 use tailcall::tailcall;
 
 #[tailcall]
-fn recurse_inline_string_chars(source: &[u8], position: usize) -> Result<Context> {
-    if let Some(byte) = source.get(position) {
+fn inline_string_chars(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    if let Some(byte) = src.get(pos) {
         if byte.is('"') {
-            let result = Context::new(source, position + 1);
+            let pos = pos + 1;
+
+            let parsed = &src[..pos];
+            let result = (parsed, src, pos);
 
             Ok(result)
         } else if byte.is('\\') {
-            let ctx = Context::new(source, position + 1);
+            let pos = pos + 1;
 
-            let (_, ctx) = escape_sequence(ctx)?;
+            let (_, src, pos) = resolve_escape_sequence(src, pos)?;
 
-            recurse_inline_string_chars(ctx.source(), ctx.position())
+            inline_string_chars(src, pos)
         } else if !byte.is_ascii_control() {
-            recurse_inline_string_chars(source, position + 1)
+            inline_string_chars(src, pos + 1)
         } else {
             let result = Error::Generic(f!(
                 "expected a non-control character, '\"', or '\\' , got '{}'",
@@ -36,12 +38,10 @@ fn recurse_inline_string_chars(source: &[u8], position: usize) -> Result<Context
     }
 }
 
-pub fn inline_string(ctx: Context) -> Result<(&[u8], Context)> {
-    if let Some(byte) = ctx.get_current_byte() {
+pub fn inline_string(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    if let Some(byte) = src.get(pos) {
         if byte.is('"') {
-            let result = recurse_inline_string_chars(ctx.source(), ctx.position() + 1);
-
-            result.map(|ctx| (ctx.get_current_slice(), ctx))
+            inline_string_chars(src, pos + 1)
         } else {
             let result = Error::Generic(f!("expected a '\"', got '{}'", byte.as_char()));
 
@@ -56,26 +56,26 @@ pub fn inline_string(ctx: Context) -> Result<(&[u8], Context)> {
 
 #[test]
 fn test_inline_string() {
-    assert!(inline_string(Context::new(r#""Hello, World!""#.as_bytes(), 0)).is_ok());
-    assert!(inline_string(Context::new(r#""Hello, World!""#.as_bytes(), 0)).is_ok());
-    assert!(inline_string(Context::new(
+    assert!(inline_string(r#""Hello, World!""#.as_bytes(), 0).is_ok());
+    assert!(inline_string(r#""Hello, World!""#.as_bytes(), 0).is_ok());
+    assert!(inline_string(
         r#""
         Hello, World!""#
             .as_bytes(),
         0
-    ))
+    )
     .is_err());
 
-    assert!(inline_string(Context::new(r#""""#.as_bytes(), 0)).is_ok());
-    assert!(inline_string(Context::new(r#"""#.as_bytes(), 0)).is_err());
-    assert!(inline_string(Context::new(r#""#.as_bytes(), 0)).is_err());
+    assert!(inline_string(r#""""#.as_bytes(), 0).is_ok());
+    assert!(inline_string(r#"""#.as_bytes(), 0).is_err());
+    assert!(inline_string(r#""#.as_bytes(), 0).is_err());
 
-    assert!(inline_string(Context::new(r#""\n""#.as_bytes(), 0)).is_ok());
-    assert!(inline_string(Context::new(r#""\uFFFF""#.as_bytes(), 0)).is_ok());
+    assert!(inline_string(r#""\n""#.as_bytes(), 0).is_ok());
+    assert!(inline_string(r#""\uFFFF""#.as_bytes(), 0).is_ok());
 }
 
-fn escape_sequence(ctx: Context) -> Result<(&[u8], Context)> {
-    if let Some(byte) = ctx.get_current_byte() {
+fn resolve_escape_sequence(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    if let Some(byte) = src.get(pos) {
         if byte.is('"')
             || byte.is('\\')
             || byte.is('/')
@@ -85,14 +85,15 @@ fn escape_sequence(ctx: Context) -> Result<(&[u8], Context)> {
             || byte.is('r')
             || byte.is('t')
         {
-            let ctx = Context::new(ctx.source(), ctx.position() + 1);
-            let result = (ctx.get_current_slice(), ctx);
+            let pos = pos + 1;
+            let parsed = &src[..pos];
+            let result = (parsed, src, pos);
 
             Ok(result)
         } else if byte.is('u') {
-            let ctx = Context::new(ctx.source(), ctx.position() + 1);
+            let pos = pos + 1;
 
-            resolve_hex_digits(ctx)
+            resolve_hex_digits(src, pos)
         } else {
             let result =
                 Error::Generic(f!("expected an escape sequence, got '{}'", byte.as_char()));
@@ -108,30 +109,27 @@ fn escape_sequence(ctx: Context) -> Result<(&[u8], Context)> {
 
 #[test]
 fn test_escape_sequence() {
-    assert!(escape_sequence(Context::new(b"\"", 0)).is_ok());
-    assert!(escape_sequence(Context::new(b"\\", 0)).is_ok());
-    assert!(escape_sequence(Context::new(b"/", 0)).is_ok());
-    assert!(escape_sequence(Context::new(b"b", 0)).is_ok());
-    assert!(escape_sequence(Context::new(b"f", 0)).is_ok());
-    assert!(escape_sequence(Context::new(b"n", 0)).is_ok());
-    assert!(escape_sequence(Context::new(b"r", 0)).is_ok());
-    assert!(escape_sequence(Context::new(b"t", 0)).is_ok());
+    assert!(resolve_escape_sequence(b"\"", 0).is_ok());
+    assert!(resolve_escape_sequence(b"\\", 0).is_ok());
+    assert!(resolve_escape_sequence(b"/", 0).is_ok());
+    assert!(resolve_escape_sequence(b"b", 0).is_ok());
+    assert!(resolve_escape_sequence(b"f", 0).is_ok());
+    assert!(resolve_escape_sequence(b"n", 0).is_ok());
+    assert!(resolve_escape_sequence(b"r", 0).is_ok());
+    assert!(resolve_escape_sequence(b"t", 0).is_ok());
 
-    assert!(escape_sequence(Context::new(b"uFFFF", 0)).is_ok());
+    assert!(resolve_escape_sequence(b"uFFFF", 0).is_ok());
 
-    assert!(escape_sequence(Context::new(b"z", 0)).is_err());
-    assert!(escape_sequence(Context::new(b"u", 0)).is_err());
+    assert!(resolve_escape_sequence(b"z", 0).is_err());
+    assert!(resolve_escape_sequence(b"u", 0).is_err());
 }
 
 #[tailcall]
-fn recurse_hexdigits(length: usize, source: &[u8], position: usize) -> Result<Context> {
-    if length != 0 {
-        if let Some(byte) = source.get(position) {
+fn hexdigits(len: usize, src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    if len != 0 {
+        if let Some(byte) = src.get(pos) {
             if byte.is_ascii_hexdigit() {
-                let length = length - 1;
-                let position = position + 1;
-
-                recurse_hexdigits(length, source, position)
+                hexdigits(len - 1, src, pos + 1)
             } else {
                 let result = Error::Generic(f!("expected a hex digit, got '{}'", byte.as_char()));
 
@@ -143,25 +141,96 @@ fn recurse_hexdigits(length: usize, source: &[u8], position: usize) -> Result<Co
             Err(result)
         }
     } else {
-        let result = Context::new(source, position);
+        let parsed = &src[..pos];
+        let result = (parsed, src, pos);
 
         Ok(result)
     }
 }
 
-fn resolve_hex_digits(ctx: Context) -> Result<(&[u8], Context)> {
-    let result = recurse_hexdigits(4, ctx.source(), ctx.position());
-
-    result.map(|ctx| (ctx.get_current_slice(), ctx))
+fn resolve_hex_digits(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    hexdigits(4, src, pos)
 }
 
 #[test]
 fn test_resolve_hex_digits() {
-    assert!(resolve_hex_digits(Context::new(b"FFFF", 0)).is_ok());
-    assert!(resolve_hex_digits(Context::new(b"12AF", 0)).is_ok());
-    assert!(resolve_hex_digits(Context::new(b"45F2", 0)).is_ok());
-    assert!(resolve_hex_digits(Context::new(b"FFF", 0)).is_err());
-    assert!(resolve_hex_digits(Context::new(b"A", 0)).is_err());
-    assert!(resolve_hex_digits(Context::new(b"A2", 0)).is_err());
-    assert!(resolve_hex_digits(Context::new(b"", 0)).is_err());
+    assert!(resolve_hex_digits(b"FFFF", 0).is_ok());
+    assert!(resolve_hex_digits(b"12AF", 0).is_ok());
+    assert!(resolve_hex_digits(b"45F2", 0).is_ok());
+    assert!(resolve_hex_digits(b"FFF", 0).is_err());
+    assert!(resolve_hex_digits(b"A", 0).is_err());
+    assert!(resolve_hex_digits(b"A2", 0).is_err());
+    assert!(resolve_hex_digits(b"", 0).is_err());
+}
+
+#[tailcall]
+fn quotes(len: usize, src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    if len != 0 {
+        if let Some(byte) = src.get(pos) {
+            if byte.is('"') {
+                quotes(len - 1, src, pos + 1)
+            } else {
+                let result = Error::Generic(f!("expected a '\"', got '{}'", byte.as_char()));
+
+                Err(result)
+            }
+        } else {
+            let result = Error::Generic("expected a '\"', got none".to_string());
+
+            Err(result)
+        }
+    } else {
+        let parsed = &src[..pos];
+        let result = (parsed, src, pos);
+
+        Ok(result)
+    }
+}
+
+pub fn multiline_string_delimiter(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    quotes(3, src, pos)
+}
+
+#[tailcall]
+fn multiline_string_chars(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    if let Some(byte) = src.get(pos) {
+        if byte.is('"') {
+            let (_, src, pos) = multiline_string_delimiter(src, pos)?;
+
+            let parsed = &src[..pos];
+            let result = (parsed, src, pos);
+
+            Ok(result)
+        } else if byte.is('\\') {
+            let pos = pos + 1;
+
+            let (_, src, pos) = resolve_escape_sequence(src, pos)?;
+
+            multiline_string_chars(src, pos)
+        } else {
+            multiline_string_chars(src, pos + 1)
+        }
+    } else {
+        let result = Error::Generic("expected a character, '\"', or '\\', got none".to_string());
+
+        Err(result)
+    }
+}
+
+pub fn multiline_string(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    if let Some(byte) = src.get(pos) {
+        if byte.is('"') {
+            let (_, src, pos) = multiline_string_delimiter(src, pos)?;
+
+            multiline_string_chars(src, pos)
+        } else {
+            let result = Error::Generic(f!("expected a '\"', got '{}'", byte.as_char()));
+
+            Err(result)
+        }
+    } else {
+        let result = Error::Generic("expected a '\"', got none".to_string());
+
+        Err(result)
+    }
 }

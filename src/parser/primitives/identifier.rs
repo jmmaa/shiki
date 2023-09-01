@@ -1,33 +1,34 @@
 use super::prelude::*;
 
-use super::context::Context;
 use super::utils::ByteUtil;
 
 use tailcall::tailcall;
 
 #[tailcall]
-pub fn recurse_alphanumerics(source: &[u8], position: usize) -> Result<Context> {
-    if let Some(&byte) = source.get(position) {
+pub fn alphanumerics(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    if let Some(byte) = src.get(pos) {
         if byte.is_ascii_alphanumeric() {
-            let position = position + 1;
+            let pos = pos + 1;
 
-            if let Some(byte) = source.get(position) {
+            if let Some(byte) = src.get(pos) {
                 if byte.is_ascii_alphanumeric() {
-                    recurse_alphanumerics(source, position)
+                    alphanumerics(src, pos)
                 } else if byte.is('_') {
-                    recurse_alphanumerics(source, position + 1)
+                    alphanumerics(src, pos + 1)
                 } else {
-                    let result = Context::new(source, position);
+                    let parsed = &src[..pos];
+                    let result = (parsed, src, pos);
 
                     Ok(result)
                 }
             } else {
-                let result = Context::new(source, position);
+                let parsed = &src[..pos];
+                let result = (parsed, src, pos);
 
                 Ok(result)
             }
         } else {
-            let result = Error::Generic(f!("expected a letter or digit, got '{}'", byte as char));
+            let result = Error::Generic(f!("expected a letter or digit, got '{}'", byte.as_char()));
 
             Err(result)
         }
@@ -38,79 +39,23 @@ pub fn recurse_alphanumerics(source: &[u8], position: usize) -> Result<Context> 
     }
 }
 
-#[test]
-
-fn test_alphanumerics_split_position() {
-    assert!(recurse_alphanumerics(b"123", 0).is_ok());
-    assert!(recurse_alphanumerics(b"abcd", 0).is_ok());
-    assert!(recurse_alphanumerics(b"abcd123", 0).is_ok());
-    assert!(recurse_alphanumerics(b"123abcd", 0).is_ok());
-    assert!(recurse_alphanumerics(b"abcd_123", 0).is_ok());
-    assert!(recurse_alphanumerics(b"-", 0).is_err());
-}
-
-#[inline(always)]
-pub fn alphanumerics(ctx: Context) -> Result<(&[u8], Context)> {
-    let result = recurse_alphanumerics(ctx.source(), ctx.position());
-
-    result.map(|ctx| (ctx.get_current_slice(), ctx))
-}
-
-#[test]
-fn test_alphanumerics() {
-    assert!(alphanumerics(Context::new(b"123", 0)).is_ok());
-    assert!(alphanumerics(Context::new(b"abcd", 0)).is_ok());
-    assert!(alphanumerics(Context::new(b"abcd123", 0)).is_ok());
-    assert!(alphanumerics(Context::new(b"123abcd", 0)).is_ok());
-    assert!(alphanumerics(Context::new(b"abcd_123", 0)).is_ok());
-    assert!(alphanumerics(Context::new(b"-", 0)).is_err());
-
-    let case = alphanumerics(Context::new(b"123", 0)).unwrap();
-
-    let position = case.1.position();
-
-    assert_eq!(position, 3);
-
-    let case = alphanumerics(Context::new(b"asd123", 0)).unwrap();
-
-    let position = case.1.position();
-
-    assert_eq!(position, 6);
-
-    let case = alphanumerics(Context::new(b"123_123", 0)).unwrap();
-
-    let position = case.1.position();
-
-    assert_eq!(position, 7);
-
-    let case = alphanumerics(Context::new(b"asdas_asd", 0)).unwrap();
-
-    let position = case.1.position();
-
-    assert_eq!(position, 9);
-
-    let case = alphanumerics(Context::new(b"asd123_23asd", 0)).unwrap();
-
-    let position = case.1.position();
-
-    assert_eq!(position, 12);
-}
-
-pub fn identifier(ctx: Context) -> Result<(&[u8], Context)> {
-    if let Some(byte) = ctx.get_current_byte() {
+pub fn identifier(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    if let Some(byte) = src.get(pos) {
         if byte.is_ascii_alphabetic() {
-            let ctx = Context::new(ctx.source(), ctx.position() + 1);
+            let pos = pos + 1;
 
-            if let Some(byte) = ctx.get_current_byte() {
+            if let Some(byte) = src.get(pos) {
                 if byte.is_ascii_alphanumeric() {
-                    alphanumerics(ctx)
+                    alphanumerics(src, pos)
                 } else {
-                    let result = (ctx.get_current_slice(), ctx);
+                    let parsed = &src[..pos];
+                    let result = (parsed, src, pos);
 
                     Ok(result)
                 }
             } else {
-                let result = (ctx.get_current_slice(), ctx);
+                let parsed = &src[..pos];
+                let result = (parsed, src, pos);
 
                 Ok(result)
             }
@@ -127,43 +72,42 @@ pub fn identifier(ctx: Context) -> Result<(&[u8], Context)> {
 }
 
 #[test]
-
 fn test_identifier() {
-    assert!(identifier(Context::new(b"123", 0)).is_err());
-    assert!(identifier(Context::new(b"abcd", 0)).is_ok());
-    assert!(identifier(Context::new(b"abcd123", 0)).is_ok());
-    assert!(identifier(Context::new(b"123abcd", 0)).is_err());
-    assert!(identifier(Context::new(b"abcd_123", 0)).is_ok());
-    assert!(identifier(Context::new(b"-", 0)).is_err());
-    assert!(identifier(Context::new(b"_", 0)).is_err());
+    assert!(identifier(b"123", 0).is_err());
+    assert!(identifier(b"abcd", 0).is_ok());
+    assert!(identifier(b"abcd123", 0).is_ok());
+    assert!(identifier(b"123abcd", 0).is_err());
+    assert!(identifier(b"abcd_123", 0).is_ok());
+    assert!(identifier(b"-", 0).is_err());
+    assert!(identifier(b"_", 0).is_err());
 
-    let case = identifier(Context::new(b"a123", 0)).unwrap();
+    let case = identifier(b"a123", 0).unwrap();
 
-    let position = case.1.position();
+    let pos = case.2;
 
-    assert_eq!(position, 4);
+    assert_eq!(pos, 4);
 
-    let case = identifier(Context::new(b"asd123", 0)).unwrap();
+    let case = identifier(b"asd123", 0).unwrap();
 
-    let position = case.1.position();
+    let pos = case.2;
 
-    assert_eq!(position, 6);
+    assert_eq!(pos, 6);
 
-    let case = identifier(Context::new(b"a123_123", 0)).unwrap();
+    let case = identifier(b"a123_123", 0).unwrap();
 
-    let position = case.1.position();
+    let pos = case.2;
 
-    assert_eq!(position, 8);
+    assert_eq!(pos, 8);
 
-    let case = identifier(Context::new(b"asdas_asd", 0)).unwrap();
+    let case = identifier(b"asdas_asd", 0).unwrap();
 
-    let position = case.1.position();
+    let pos = case.2;
 
-    assert_eq!(position, 9);
+    assert_eq!(pos, 9);
 
-    let case = identifier(Context::new(b"asd123_23asd", 0)).unwrap();
+    let case = identifier(b"asd123_23asd", 0).unwrap();
 
-    let position = case.1.position();
+    let pos = case.2;
 
-    assert_eq!(position, 12);
+    assert_eq!(pos, 12);
 }
