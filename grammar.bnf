@@ -1,13 +1,10 @@
 # NUMBER
 <number> ::= <integer> | 
-             <integer> "." <float_tail>    | 
-             <integer> "e" <exponent_tail> |
-             <integer> "." <float_tail> "e" <exponent_tail>
-
-
-<exponent_tail> ::= "+" <digits> | "-" <digits>
-
-<float_tail> ::= <digits>
+             <integer> "." <digits>   | 
+             <integer> "e" "+" <digits> | 
+             <integer> "e" "-" <digits> |
+             <integer> "." <digits> "e" "+" <digits> |
+             <integer> "." <digits> "e" "-" <digits>
 
 <integer> ::= "+" <natural> | "-" <natural> | <natural>
 
