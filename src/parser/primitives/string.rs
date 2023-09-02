@@ -1,6 +1,6 @@
-use super::prelude::*;
+use crate::prelude::*;
 
-use super::utils::ByteUtil;
+use crate::utils::ByteUtil;
 
 use tailcall::tailcall;
 
@@ -187,15 +187,11 @@ fn quotes(len: usize, src: Source, pos: Position) -> Result<(&[u8], Source, Posi
     }
 }
 
-pub fn multiline_string_delimiter(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
-    quotes(3, src, pos)
-}
-
 #[tailcall]
 fn multiline_string_chars(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     if let Some(byte) = src.get(pos) {
         if byte.is('"') {
-            let (_, src, pos) = multiline_string_delimiter(src, pos)?;
+            let (_, src, pos) = quotes(3, src, pos)?;
 
             let parsed = &src[..pos];
             let result = (parsed, src, pos);
@@ -218,19 +214,7 @@ fn multiline_string_chars(src: Source, pos: Position) -> Result<(&[u8], Source, 
 }
 
 pub fn multiline_string(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
-    if let Some(byte) = src.get(pos) {
-        if byte.is('"') {
-            let (_, src, pos) = multiline_string_delimiter(src, pos)?;
+    let (_, src, pos) = quotes(3, src, pos)?;
 
-            multiline_string_chars(src, pos)
-        } else {
-            let result = Error::Generic(f!("expected a '\"', got '{}'", byte.as_char()));
-
-            Err(result)
-        }
-    } else {
-        let result = Error::Generic("expected a '\"', got none".to_string());
-
-        Err(result)
-    }
+    multiline_string_chars(src, pos)
 }

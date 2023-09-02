@@ -1,6 +1,6 @@
-use super::prelude::*;
+use crate::prelude::*;
 
-use super::utils::ByteUtil;
+use crate::utils::ByteUtil;
 
 use tailcall::tailcall;
 
@@ -60,6 +60,16 @@ pub fn natural(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> 
 
                 Ok(result)
             }
+
+            // match digits(src, pos) {
+            //     Ok(result) => Ok(result),
+            //     Err(_) => {
+            //         let parsed = &src[..pos];
+            //         let result = (parsed, src, pos);
+
+            //         Ok(result)
+            //     }
+            // }
         } else if byte.is('0') {
             let pos = pos + 1;
             let parsed = &src[..pos];
