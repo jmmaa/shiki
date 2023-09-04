@@ -1,10 +1,15 @@
 # NUMBER
-<number> ::= <integer> | 
-             <integer> "." <digits>   | 
-             <integer> "e" "+" <digits> | 
-             <integer> "e" "-" <digits> |
-             <integer> "." <digits> "e" "+" <digits> |
-             <integer> "." <digits> "e" "-" <digits>
+
+<number> ::= <integer> | <float> | <exponent>
+
+<float> ::= <integer> "." <digits>
+
+<exponent> ::= <integer> "e" "+" <digits> |
+               <integer> "e" "-" <digits> |
+               <integer> "e" <digits>     |
+               <float> "e" "+" <digits>   |
+               <float> "e" "-" <digits>   |
+               <float> "e" <digits>
 
 <integer> ::= "+" <natural> | "-" <natural> | <natural>
 
@@ -12,9 +17,7 @@
 
 <digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
 
-<digit> ::= <zero> | <nonzero> 
-
-<zero> ::= "0" 
+<digit> ::= "0"  | <nonzero>
 
 <nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 

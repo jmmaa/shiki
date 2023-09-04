@@ -3,7 +3,7 @@
 use shiki::prelude::*;
 
 use shiki::parser::primitives::identifier::alphanumerics;
-use shiki::parser::primitives::number::number;
+use shiki::parser::primitives::number::{exponent, number};
 
 fn main() -> Result<()> {
     calculate_time(|| {
