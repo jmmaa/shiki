@@ -1,14 +1,18 @@
 #![allow(unused)]
 
-use shiki::parser::primitives::inline_string::inline_string;
 use shiki::prelude::*;
 
-use shiki::parser::context::Context;
 use shiki::parser::primitives::identifier::alphanumerics;
 use shiki::parser::primitives::number::number;
 
 fn main() -> Result<()> {
-    let result = inline_string(Context::new(r#""\uffE0helloworld!""#.as_bytes(), 0));
+    calculate_time(|| {
+        for _ in 0..100_000_000 {
+            number(b"1230213012312", 0).unwrap();
+        }
+    });
+
+    let result = number(b"1230213012312", 0);
 
     // ADD MORE TESTS TO THIS!
     println!("{:?}", result);
