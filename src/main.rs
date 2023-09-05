@@ -1,14 +1,13 @@
 #![allow(unused)]
 
+use shiki::parser::primitives::number::number;
 use shiki::prelude::*;
 
 use shiki::parser::primitives::identifier::alphanumerics;
-use shiki::parser::primitives::number::{exponent, number};
-
 fn main() -> Result<()> {
     calculate_time(|| {
         for _ in 0..100_000_000 {
-            number(b"1230213012312", 0).unwrap();
+            number(b"1230213.012312e213", 0).unwrap();
         }
     });
 
@@ -20,6 +19,8 @@ fn main() -> Result<()> {
     println!("{}", String::from_utf8(result.unwrap().0.to_vec()).unwrap());
 
     Ok(())
+
+    // improve number later
 }
 
 fn calculate_time(op: impl Fn()) {

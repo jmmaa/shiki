@@ -6,30 +6,26 @@ use tailcall::tailcall;
 
 /*
 
-<number> ::= <integer> | <float> | <exponent>
 
-<float> ::= <integer> "." <digits>
+<number> ::= <integer> <fraction> <exponent>
 
-<exponent> ::= <integer> "e" "+" <digits> |
-               <integer> "e" "-" <digits> |
-               <integer> "e" <digits>     |
-               <float> "e" "+" <digits>   |
-               <float> "e" "-" <digits>   |
-               <float> "e" <digits>
+<fraction> ::= E | "." <digits>
 
-<integer> ::= "+" <natural> | "-" <natural> | <natural>
+<exponent> ::= E | "e" <sign> <digits> | "E" <sign> <digits>
+
+<integer> ::= <sign> <natural>
+
+<sign> ::= "-" | "+" | E
 
 <natural> ::= <nonzero> <digits> | <nonzero> "_" <digits> | <digit>
 
 <digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
 
-<digit> ::= "0"  | <nonzero>
-
-<nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
 
 */
 
+/// <digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
 #[tailcall]
 fn digits(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     if let Some(byte) = src.get(pos) {
@@ -65,6 +61,39 @@ fn digits(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     }
 }
 
+#[test]
+fn test_digits() {
+    assert!(digits(b"0", 0).is_ok());
+    assert!(digits(b"1", 0).is_ok());
+
+    assert!(digits(b"0123", 0).is_ok());
+    assert!(digits(b"123", 0).is_ok());
+
+    assert!(digits(b"_0123", 0).is_err());
+    assert!(digits(b"123_", 0).is_err());
+
+    assert!(digits(b"", 0).is_err());
+
+    let case = digits(b"0", 0).unwrap();
+    assert_eq!(case.0, b"0");
+
+    let case = digits(b"0123", 0).unwrap();
+    assert_eq!(case.0, b"0123");
+
+    let case = digits(b"0", 0).unwrap();
+    assert_eq!(case.0, b"0");
+
+    let case = digits(b"123", 0).unwrap();
+    assert_eq!(case.0, b"123");
+
+    let case = digits(b"1_23", 0).unwrap();
+    assert_eq!(case.0, b"1_23");
+
+    let case = digits(b"123_123", 0).unwrap();
+    assert_eq!(case.0, b"123_123");
+}
+
+/// <natural> ::= <nonzero> <digits> | <nonzero> "_" <digits> | <digit>
 #[inline(always)]
 pub fn natural(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     if let Some(byte) = src.get(pos) {
@@ -106,74 +135,264 @@ pub fn natural(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> 
     }
 }
 
+#[test]
+fn test_natural() {
+    assert!(natural(b"0", 0).is_ok());
+    assert!(natural(b"1", 0).is_ok());
+
+    assert!(natural(b"0123", 0).is_ok());
+    assert!(natural(b"123", 0).is_ok());
+
+    assert!(digits(b"_0123", 0).is_err());
+    assert!(digits(b"123_", 0).is_err());
+
+    assert!(natural(b"", 0).is_err());
+
+    let case = natural(b"0", 0).unwrap();
+    assert_eq!(case.0, b"0");
+
+    let case = natural(b"0123", 0).unwrap();
+    assert_eq!(case.0, b"0");
+
+    let case = natural(b"0", 0).unwrap();
+    assert_eq!(case.0, b"0");
+
+    let case = natural(b"123", 0).unwrap();
+    assert_eq!(case.0, b"123");
+
+    let case = natural(b"0_123", 0).unwrap();
+    assert_eq!(case.0, b"0");
+
+    let case = natural(b"1_23", 0).unwrap();
+    assert_eq!(case.0, b"1_23");
+
+    let case = natural(b"123_123", 0).unwrap();
+    assert_eq!(case.0, b"123_123");
+}
+
+/// <sign> ::= "-" | "+" | E
 #[inline(always)]
-pub fn integer(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+pub fn sign(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     if let Some(byte) = src.get(pos) {
         if byte.is('+') || byte.is('-') {
             let pos = pos + 1;
-            natural(src, pos)
+            let parsed = &src[..pos];
+            let result = (parsed, src, pos);
+
+            Ok(result)
         } else {
-            natural(src, pos)
+            let parsed = &src[..pos];
+            let result = (parsed, src, pos);
+
+            Ok(result)
         }
     } else {
-        let result = Error::Generic("expected a digit, '+', or '-', got none".to_string());
+        let parsed = &src[..pos];
+        let result = (parsed, src, pos);
 
-        Err(result)
+        Ok(result)
     }
 }
 
-pub fn float(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
-    let (_, src, pos) = integer(src, pos)?;
+#[test]
+fn test_sign() {
+    assert!(sign(b"+", 0).is_ok());
+    assert!(sign(b"-", 0).is_ok());
 
+    assert!(sign(b"", 0).is_ok());
+
+    let case = sign(b"+", 0).unwrap();
+    assert_eq!(case.0, b"+");
+
+    let case = sign(b"-", 0).unwrap();
+    assert_eq!(case.0, b"-");
+
+    let case = sign(b"asdas", 0).unwrap();
+    assert_eq!(case.0, b"");
+}
+
+/// <integer> ::= <sign> <natural>
+#[inline(always)]
+pub fn integer(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    let (_, src, pos) = sign(src, pos)?;
+    natural(src, pos)
+}
+
+#[test]
+fn test_integer() {
+    assert!(integer(b"0", 0).is_ok());
+    assert!(integer(b"1", 0).is_ok());
+
+    assert!(integer(b"0123", 0).is_ok());
+    assert!(integer(b"123", 0).is_ok());
+
+    assert!(integer(b"+123", 0).is_ok());
+    assert!(integer(b"-123", 0).is_ok());
+
+    assert!(integer(b"-0", 0).is_ok());
+    assert!(integer(b"+1", 0).is_ok());
+
+    assert!(integer(b"+", 0).is_err());
+    assert!(integer(b"-", 0).is_err());
+
+    assert!(integer(b"_0123", 0).is_err());
+    assert!(integer(b"123_", 0).is_err());
+
+    assert!(integer(b"", 0).is_err());
+
+    let case = integer(b"0", 0).unwrap();
+    assert_eq!(case.0, b"0");
+
+    let case = integer(b"0123", 0).unwrap();
+    assert_eq!(case.0, b"0");
+
+    let case = integer(b"0", 0).unwrap();
+    assert_eq!(case.0, b"0");
+
+    let case = integer(b"123", 0).unwrap();
+    assert_eq!(case.0, b"123");
+
+    let case = integer(b"-0_123", 0).unwrap();
+    assert_eq!(case.0, b"-0");
+
+    let case = integer(b"+1_23", 0).unwrap();
+    assert_eq!(case.0, b"+1_23");
+
+    let case = integer(b"+123_123", 0).unwrap();
+    assert_eq!(case.0, b"+123_123");
+}
+
+/// <fraction> ::= E | "." <digits>
+pub fn fraction(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     if let Some(byte) = src.get(pos) {
         if byte.is('.') {
             digits(src, pos + 1)
         } else {
-            let result = Error::Generic(f!("expected a '.', got '{}'", byte.as_char()));
+            let parsed = &src[..pos];
+            let result = (parsed, src, pos);
 
-            Err(result)
+            Ok(result)
         }
     } else {
-        let result = Error::Generic("expected a '.', got none".to_string());
+        let parsed = &src[..pos];
+        let result = (parsed, src, pos);
 
-        Err(result)
+        Ok(result)
     }
 }
 
-pub fn exponent(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
-    let (_, src, pos) = float(src, pos).or(integer(src, pos))?;
+#[test]
+fn test_fraction() {
+    assert!(fraction(b"0", 0).is_ok());
+    assert!(fraction(b"1", 0).is_ok());
 
+    assert!(fraction(b".0123", 0).is_ok());
+    assert!(fraction(b".123", 0).is_ok());
+
+    assert!(fraction(b".123", 0).is_ok());
+    assert!(fraction(b".456", 0).is_ok());
+
+    assert!(fraction(b".1_23", 0).is_ok());
+    assert!(fraction(b".4_56", 0).is_ok());
+
+    assert!(fraction(b"-0", 0).is_ok());
+    assert!(fraction(b"+1", 0).is_ok());
+
+    assert!(fraction(b"+", 0).is_ok());
+    assert!(fraction(b"-", 0).is_ok());
+
+    assert!(fraction(b"_0123", 0).is_ok());
+    assert!(fraction(b"123_", 0).is_ok());
+
+    assert!(fraction(b"", 0).is_ok());
+
+    let case = fraction(b".1", 0).unwrap();
+    assert_eq!(case.0, b".1");
+
+    let case = fraction(b".123", 0).unwrap();
+    assert_eq!(case.0, b".123");
+
+    let case = fraction(b".0", 0).unwrap();
+    assert_eq!(case.0, b".0");
+
+    let case = fraction(b".123", 0).unwrap();
+    assert_eq!(case.0, b".123");
+
+    let case = fraction(b"+0", 0).unwrap();
+    assert_eq!(case.0, b"");
+}
+
+/// <exponent> ::= E | "e" <sign> <digits> | "E" <sign> <digits>
+pub fn exponent(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     if let Some(byte) = src.get(pos) {
-        if byte.is('e') {
+        if byte.is('e') || byte.is('E') {
             let pos = pos + 1;
 
-            if let Some(byte) = src.get(pos) {
-                if byte.is('+') || byte.is('-') {
-                    let pos = pos + 1;
+            let (_, src, pos) = sign(src, pos)?;
 
-                    digits(src, pos)
-                } else {
-                    digits(src, pos)
-                }
-            } else {
-                let result = Error::Generic("expected a digit, '+', or '-', got none".to_string());
-
-                Err(result)
-            }
+            digits(src, pos)
         } else {
-            let result = Error::Generic(f!("expected a '.', got '{}'", byte.as_char()));
+            let parsed = &src[..pos];
+            let result = (parsed, src, pos);
 
-            Err(result)
+            Ok(result)
         }
     } else {
-        let result = Error::Generic("expected a '.', got none".to_string());
+        let parsed = &src[..pos];
+        let result = (parsed, src, pos);
 
-        Err(result)
+        Ok(result)
     }
+
+    // if let Some(byte) = src.get(pos) {
+    //     if byte.is('e') {
+    //         let pos = pos + 1;
+
+    //         if let Some(byte) = src.get(pos) {
+    //             if byte.is('+') || byte.is('-') {
+    //                 let pos = pos + 1;
+
+    //                 digits(src, pos)
+    //             } else {
+    //                 digits(src, pos)
+    //             }
+    //         } else {
+    //             let result = Error::Generic("expected a digit, '+', or '-', got none".to_string());
+
+    //             Err(result)
+    //         }
+    //     } else {
+    //         let result = Error::Generic(f!("expected a '.', got '{}'", byte.as_char()));
+
+    //         Err(result)
+    //     }
+    // } else {
+    //     let result = Error::Generic("expected a '.', got none".to_string());
+
+    //     Err(result)
+    // }
 }
 
 pub fn number(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
-    exponent(src, pos).or(float(src, pos)).or(integer(src, pos))
+    match integer(src, pos) {
+        Ok((parsed, src, pos)) => match fraction(src, pos) {
+            Ok((parsed, src, pos)) => match exponent(src, pos) {
+                Ok(result) => Ok(result),
+                Err(_) => {
+                    let result = (parsed, src, pos);
+
+                    Ok(result)
+                }
+            },
+            Err(_) => {
+                let result = (parsed, src, pos);
+
+                Ok(result)
+            }
+        },
+
+        Err(result) => Err(result),
+    }
 }
 
 #[test]

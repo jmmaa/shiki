@@ -1,52 +1,41 @@
-# NUMBER
-
-<number> ::= <integer> | <float> | <exponent>
-
-<float> ::= <integer> "." <digits>
-
-<exponent> ::= <integer> "e" "+" <digits> |
-               <integer> "e" "-" <digits> |
-               <integer> "e" <digits>     |
-               <float> "e" "+" <digits>   |
-               <float> "e" "-" <digits>   |
-               <float> "e" <digits>
-
-<integer> ::= "+" <natural> | "-" <natural> | <natural>
-
-<natural> ::= <nonzero> <digits> | <nonzero> "_" <digits> | <digit>
-
-<digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
-
-<digit> ::= "0"  | <nonzero>
-
-<nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<document> ::= <properties>
 
 
-# IDENTIFIER
+<array> ::= "[" <opt_whitespaces>  <values>  <opt_whitespaces> "]"
 
-<identifier> ::= <letter> | <letter> <alphanumerics>
-
-<alphanumerics> ::= <alphanumeric> | <alphanumeric> <alphanumerics> | <alphanumeric> "_" <alphanumerics>
-
-<alphanumeric> ::= <digit> | <letter>
-
-<letter> ::= <lowercase_letter> | <uppercase_letter>
-
-<digit> ::= <zero> | <nonzero> 
-
-<zero> ::= "0" 
-
-<nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
-
-<lowercase_letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" 
-		             | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" 
-
-<uppercase_letter> ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" 
-                     | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+<values> ::= <value>  | <value> <opt_whitespaces> <values> | E
 
 
 
-# STRING
+<map> ::= "{" <opt_whitespaces> <properties> <opt_whitespaces> "}"
+
+<properties> ::= <property> | <property> <opt_whitespaces> <properties> | E
+
+
+
+
+<property> ::=  <key> <opt_whitespaces> "=" <opt_whitespaces> <value>
+
+
+
+
+<value> ::= <string> | <number> | "null" | "true" | "false" | <map> | <array>
+
+
+
+
+<key> ::= <identifier> <opt_whitespaces> "." <opt_whitespaces> <key> | <identifier> | <property>
+
+
+
+
+<identifier> ::= "_" <identifier_chars> | <letter> <identifier_chars> 
+
+<identifier_chars> ::= <identifier_char> | <identifier_char> <identifier_chars> | E
+
+<identifier_char> ::=  "_" | <alphanumeric>
+
+
 
 
 <string> ::= <inline_string> | <multiline_string>
@@ -57,7 +46,6 @@
 
 <multiline_string_chars> ::= <any_char> <multiline_string_chars> | "\\" <escape_sequence> <multiline_string_chars> |  <multiline_string_delimiter>
 
-
 <inline_string> ::= "\"" <inline_string_chars>
 
 <inline_string_chars> ::= <any_non_control_char> <inline_string_chars> | "\\" <escape_sequence> <inline_string_chars> | "\"" 
@@ -66,11 +54,51 @@
 
 <hex_digits> ::= <hex_digit> <hex_digit> <hex_digit> <hex_digit>
 
+
+
+
+<number> ::= <integer> <fraction> <exponent>
+
+<fraction> ::= E | "." <digits>
+
+<exponent> ::= E | "e" <sign> <digits> | "E" <sign> <digits>
+
+<integer> ::= <sign> <natural>
+
+<sign> ::= "-" | "+" | E
+
+<natural> ::= <nonzero> <digits> | <nonzero> "_" <digits> | <digit>
+
+<digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
+
+
+
+
+/* only an example, this must match any char */
+<any_char> ::= <letter> | <whitespace> | <digit> | "."
+<any_non_control_char> ::= <letter> | " " | <digit> | "."
+
+<opt_whitespaces> ::=  <whitespace> <opt_whitespaces> | E
+
+<whitespace> ::= " " | "\n" | "\r" | "\f" | "\t"
+
+<alphanumeric> ::= <digit> | <letter>
+
+<digit> ::= "0"  | <nonzero> 
+
+<nonzero> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
 <hex_digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" |
                 "A" | "B" | "C" | "D" | "E" | "F" |
                 "a" | "b" | "c" | "d" | "e" | "f"
-                
 
-    
+<letter> ::= <lowercase_letter> | <uppercase_letter>
 
-# MULTILINE STRING
+<lowercase_letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" 
+		             | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" 
+
+<uppercase_letter> ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" 
+                     | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+
+
+// VALIDATE THIS GRAMMAR
