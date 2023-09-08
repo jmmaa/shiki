@@ -4,7 +4,7 @@ use crate::utils::ByteUtil;
 
 use tailcall::tailcall;
 
-// think whether its good idea to separate signs into another function or not
+// think whether its good idea to separate signs into another function or not for better error context
 
 /// <digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
 #[tailcall]
@@ -301,7 +301,6 @@ pub fn exponent(src: Source, pos: Position) -> Result<(&[u8], Source, Position)>
             let pos = pos + 1;
 
             let (_, src, pos) = sign(src, pos)?;
-
             digits(src, pos)
         } else {
             let parsed = &src[..pos];
@@ -320,7 +319,11 @@ pub fn exponent(src: Source, pos: Position) -> Result<(&[u8], Source, Position)>
 pub fn number(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     let (_, src, pos) = integer(src, pos)?;
     let (_, src, pos) = fraction(src, pos)?;
-    let result = exponent(src, pos)?;
+    let (_, src, pos) = exponent(src, pos)?;
+
+    let parsed = &src[..pos];
+    let remain = &src[pos..];
+    let result = (parsed, remain, 0);
 
     Ok(result)
 }

@@ -4,6 +4,16 @@ use crate::utils::ByteUtil;
 
 use tailcall::tailcall;
 
+/*
+
+<identifier> ::= "_" <identifier_chars> | <letter> <identifier_chars>
+
+<identifier_chars> ::= <identifier_char> | <identifier_char> <identifier_chars> | E
+
+<identifier_char> ::=  "_" | <alphanumeric>
+
+*/
+
 #[tailcall]
 pub fn alphanumerics(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     if let Some(byte) = src.get(pos) {
