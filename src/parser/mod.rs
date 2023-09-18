@@ -1,2 +1,2 @@
-pub mod combinator;
+pub mod primitive;
 pub mod primitives;
