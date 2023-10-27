@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::prelude::*;
 
 use crate::utils::ByteUtil;
@@ -7,6 +9,7 @@ use tailcall::tailcall;
 // think whether its good idea to separate signs into another function or not for better error context
 
 /// <digits> ::=  <digit> <digits> | <digit> "_" <digits> | <digit>
+
 #[tailcall]
 fn digits(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     if let Some(byte) = src.get(pos) {

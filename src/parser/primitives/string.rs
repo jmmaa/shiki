@@ -218,3 +218,7 @@ pub fn multiline_string(src: Source, pos: Position) -> Result<(&[u8], Source, Po
 
     multiline_string_chars(src, pos)
 }
+
+pub fn string(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+    multiline_string(src, pos).or(inline_string(src, pos))
+}
