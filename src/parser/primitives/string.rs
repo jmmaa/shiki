@@ -187,11 +187,18 @@ fn quotes(len: usize, src: Source, pos: Position) -> Result<(&[u8], Source, Posi
     }
 }
 
+#[test]
+fn test_quotes() {
+    assert!(quotes(3, b"\"\"\"", 0).is_ok());
+    assert!(quotes(3, b"\"\"", 0).is_err());
+    assert!(quotes(3, b"", 0).is_err());
+}
+
 #[tailcall]
-fn multiline_string_chars(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
+pub fn multiline_string_chars(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     if let Some(byte) = src.get(pos) {
         if byte.is('"') {
-            let (_, src, pos) = quotes(3, src, pos)?;
+            // let (_, src, pos) = quotes(3, src, pos)?;
 
             let parsed = &src[..pos];
             let result = (parsed, src, pos);
@@ -213,10 +220,78 @@ fn multiline_string_chars(src: Source, pos: Position) -> Result<(&[u8], Source, 
     }
 }
 
+#[test]
+fn test_multiline_string_chars() {
+    assert!(multiline_string_chars(
+        br#""""
+    ggwp
+    """"#,
+        0
+    )
+    .is_ok());
+
+    assert!(multiline_string_chars(
+        br#"""
+    ggwp
+    """"#,
+        0
+    )
+    .is_err());
+
+    assert!(multiline_string_chars(
+        br#""""
+    ggwp
+    "#,
+        0
+    )
+    .is_err());
+
+    // assert!(multiline_string_chars(
+    //     br#""""
+    // ggwp
+    // """#,
+    //     0
+    // )
+    // .is_err());
+    println!(
+        "{:?}",
+        multiline_string_chars(
+            br#""""
+    ggwp
+    """#,
+            0
+        )
+    );
+
+    assert!(multiline_string_chars(
+        br#""
+    ggwp
+    ""#,
+        0
+    )
+    .is_err());
+
+    assert!(multiline_string_chars(
+        br#""""
+    ggwp
+    ""#,
+        0
+    )
+    .is_err());
+}
+
 pub fn multiline_string(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {
     let (_, src, pos) = quotes(3, src, pos)?;
 
-    multiline_string_chars(src, pos)
+    let (_, src, pos) = multiline_string_chars(src, pos)?;
+
+    let (_, src, pos) = quotes(3, src, pos)?;
+
+    let parsed = &src[..pos];
+    let remain = &src[pos..];
+    let result = (parsed, remain, 0);
+
+    Ok(result)
 }
 
 pub fn string(src: Source, pos: Position) -> Result<(&[u8], Source, Position)> {

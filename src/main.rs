@@ -6,10 +6,19 @@ use shiki::parser::primitives::keyword::kw_true;
 
 use shiki::parser::primitives::string::string;
 
+use shiki::parser::primitives::string::multiline_string_chars;
 use shiki::parser::primitives::value::value;
 
 fn main() -> Result<()> {
-    println!("{:?}", value(b"true", 0));
+    println!(
+        "{:?}",
+        value(
+            br#""""
+    ggwp
+    """"#,
+            0
+        )
+    );
 
     Ok(())
 }
